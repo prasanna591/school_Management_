@@ -20,5 +20,8 @@
   },
   "assetBundlePatterns": [
     "**/*"
+  ],
+  "plugins": [
+    "expo-secure-store"
   ]
 }

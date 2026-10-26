@@ -12,6 +12,7 @@ import { prisma } from '../../lib/prisma';
 import { emitToSchool } from '../../lib/realtime';
 import { paginate, toSkipTake } from '../../utils/pagination';
 import { notifyUsers } from '../notifications/notifications.service';
+import { assertOwnStudentId, resolveStudentSelf } from '../students/student-scope';
 import type { Actor } from '../users/users.service';
 
 function resolveSchoolScope(actor: Actor, requestedSchoolId?: string | null): string | undefined {
@@ -25,8 +26,11 @@ export const invoicesService = {
     const { skip, take } = toSkipTake(query.page, query.limit);
     const where: Prisma.InvoiceWhereInput = {};
     const schoolId = resolveSchoolScope(actor);
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, query.studentId);
     if (schoolId) where.schoolId = schoolId;
-    if (query.studentId) where.studentId = query.studentId;
+    if (selfId) where.studentId = selfId;
+    else if (query.studentId) where.studentId = query.studentId;
     if (query.status) where.status = query.status;
     if (query.search) where.invoiceNo = { contains: query.search };
     const items = await prisma.invoice.findMany({
@@ -47,6 +51,8 @@ export const invoicesService = {
     if (!inv) throw ApiError.notFound('Invoice not found');
     const scope = resolveSchoolScope(actor);
     if (scope && inv.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, inv.studentId);
     return inv;
   },
   async create(input: CreateInvoiceInput, actor: Actor) {
@@ -220,8 +226,10 @@ export const invoicesService = {
   /** Collection summary, per-class breakdown and the outstanding-balance defaulters list. */
   async feeDesk(query: FeeDeskQuery, actor: Actor) {
     const schoolId = resolveSchoolScope(actor);
+    const selfId = await resolveStudentSelf(actor);
     const baseWhere: Prisma.InvoiceWhereInput = { status: { not: 'CANCELLED' } };
     if (schoolId) baseWhere.schoolId = schoolId;
+    if (selfId) baseWhere.studentId = selfId;
     if (query.sectionId) baseWhere.student = { sectionId: query.sectionId };
     else if (query.classLevelId) baseWhere.student = { section: { classLevelId: query.classLevelId } };
 

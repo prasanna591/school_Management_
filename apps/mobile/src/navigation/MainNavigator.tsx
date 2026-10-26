@@ -1,5 +1,5 @@
-import type { ComponentType } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState, type ComponentType } from 'react';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   createDrawerNavigator,
   type DrawerContentComponentProps,
@@ -21,6 +21,7 @@ import { ResourceListScreen } from '../screens/admin/ResourceListScreen';
 import { InfoScreen } from '../screens/admin/InfoScreen';
 import { MessagesScreen } from '../screens/admin/AdminMessagesScreen';
 import { SettingsScreen } from '../screens/admin/AdminSettingsScreen';
+import { ProfileScreen } from '../screens/admin/AdminProfileScreen';
 import { TeacherPortalScreen } from '../screens/teacher/TeacherPortalScreen';
 import { TeacherClassesScreen } from '../screens/teacher/TeacherClassesScreen';
 import { TeacherStudentsScreen } from '../screens/teacher/TeacherStudentsScreen';
@@ -33,7 +34,7 @@ import { TeacherTimetableScreen } from '../screens/teacher/TeacherTimetableScree
 import { TeacherProfileScreen } from '../screens/teacher/TeacherProfileScreen';
 import { TeacherLessonPlanScreen } from '../screens/teacher/TeacherLessonPlanScreen';
 import { TeacherMessagesScreen } from '../screens/teacher/TeacherMessagesScreen';
-import { ParentPortalScreen } from '../screens/parent/ParentPortalScreen';
+import { ParentHomeAwesome } from '../screens/parent/ParentHomeAwesome';
 import { ParentTimetableScreen } from '../screens/parent/ParentTimetableScreen';
 import { ParentResultsScreen } from '../screens/parent/ParentResultsScreen';
 import { ParentInvoicesScreen } from '../screens/parent/ParentInvoicesScreen';
@@ -79,7 +80,7 @@ const SCREEN_SHELLS: { route: string; component: ComponentType }[] = [
   { route: ROUTES.teacher.timetable, component: TeacherTimetableScreen },
   { route: ROUTES.teacher.profile, component: TeacherProfileScreen },
   { route: ROUTES.teacher.messages, component: TeacherMessagesScreen },
-  { route: ROUTES.parent.portal, component: ParentPortalScreen },
+  { route: ROUTES.parent.portal, component: ParentHomeAwesome },
   { route: ROUTES.parent.timetable, component: ParentTimetableScreen },
   { route: ROUTES.parent.results, component: ParentResultsScreen },
   { route: ROUTES.parent.invoices, component: ParentInvoicesScreen },
@@ -95,13 +96,14 @@ const SCREEN_SHELLS: { route: string; component: ComponentType }[] = [
   { route: ROUTES.admin.info, component: InfoScreen },
   { route: ROUTES.admin.messages, component: MessagesScreen },
   { route: ROUTES.admin.settings, component: SettingsScreen },
+  { route: ROUTES.account, component: ProfileScreen },
 ];
 
 /**
  * The authenticated experience: a drawer whose entries are exactly the nav
  * items the signed-in role may open (grouped into Overview / Academics / School
- * Operations / Account). Its home is the bottom-tab host, so the four primary
- * areas stay one tap away.
+ * Operations / Account). Its home is the bottom-tab host, so the role's primary
+ * areas stay one tap away and everything else is searchable.
  */
 export function MainNavigator() {
   const { user } = useAuth();
@@ -130,16 +132,36 @@ export function MainNavigator() {
 function DrawerContent({ state, navigation }: DrawerContentComponentProps) {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+
+  const groups = useMemo(() => {
+    if (!user) return [];
+    const all = groupNav(navForRole(user.role));
+    const needle = query.trim().toLowerCase();
+    if (!needle) return all;
+    return all
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => item.label.toLowerCase().includes(needle)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [user, query]);
+
   if (!user) return null;
 
   const activeScreen = currentScreenName(state);
-  const groups = groupNav(navForRole(user.role));
   const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Signed in';
   const role = humanize(user.role);
   const avatar = initials(user.firstName, user.lastName);
 
   const openProfile = () => {
-    navigation.navigate(ROUTES.admin.tabs, { screen: ROUTES.admin.profile });
+    if (user.role === 'TEACHER') {
+      navigation.navigate(ROUTES.teacher.profile);
+    } else if (user.role === 'PARENT') {
+      navigation.navigate(ROUTES.account);
+    } else {
+      navigation.navigate(ROUTES.admin.tabs, { screen: ROUTES.admin.profile });
+    }
     navigation.closeDrawer();
   };
 
@@ -171,11 +193,34 @@ function DrawerContent({ state, navigation }: DrawerContentComponentProps) {
         </View>
       </Pressable>
 
+      <View style={styles.searchWrap}>
+        <Icon name="search" size={16} color={colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Find a page"
+          placeholderTextColor={colors.textFaint}
+          autoCapitalize="none"
+          returnKeyType="search"
+          accessibilityLabel="Find a page"
+        />
+        {query ? (
+          <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
+            <Icon name="close" size={16} color={colors.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
       <ScrollView
         style={styles.drawerScroll}
         contentContainerStyle={styles.drawerScrollInner}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
+        {groups.length === 0 ? (
+          <Text style={styles.drawerEmpty}>No pages match “{query.trim()}”.</Text>
+        ) : null}
         {groups.map((group, index) => (
           <View key={group.title ?? `group-${index}`} style={styles.drawerGroup}>
             {group.title ? <Text style={styles.drawerGroupTitle}>{group.title}</Text> : null}
@@ -295,24 +340,50 @@ const styles = {
     color: colors.primary,
     fontWeight: '600',
   },
+  searchWrap: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
   drawerScroll: {
     flex: 1,
   },
   drawerScrollInner: {
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingBottom: 16,
   },
+  drawerEmpty: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
   drawerGroup: {
-    paddingBottom: 6,
+    paddingBottom: 4,
   },
   drawerGroupTitle: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 4,
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     color: colors.textFaint,
   },
   drawerItem: {

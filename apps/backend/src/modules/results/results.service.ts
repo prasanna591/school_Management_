@@ -7,6 +7,7 @@ import type { Prisma } from '@prisma/client';
 import { ApiError } from '../../errors/ApiError';
 import { prisma } from '../../lib/prisma';
 import { paginate, toSkipTake } from '../../utils/pagination';
+import { assertOwnStudentId, resolveStudentSelf } from '../students/student-scope';
 import {
   assertClassLevelInScope,
   assertStudentInScope,
@@ -41,6 +42,8 @@ export const examResultsService = {
     const { skip, take } = toSkipTake(query.page, query.limit);
     const where: Prisma.ExamResultWhereInput = {};
     const schoolId = resolveSchoolScope(actor);
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, query.studentId);
     const examFilter: Prisma.ExamWhereInput = {};
     if (schoolId) examFilter.schoolId = schoolId;
     const teacherScope = await resolveTeacherScope(actor);
@@ -73,7 +76,8 @@ export const examResultsService = {
     } else if (query.classLevelId) examFilter.classLevelId = query.classLevelId;
     if (Object.keys(examFilter).length > 0) where.exam = examFilter;
     if (query.examId) where.examId = query.examId;
-    if (query.studentId) where.studentId = query.studentId;
+    if (selfId) where.studentId = selfId;
+    else if (query.studentId) where.studentId = query.studentId;
     const items = await prisma.examResult.findMany({
       where,
       skip,
@@ -91,6 +95,8 @@ export const examResultsService = {
     if (!res) throw ApiError.notFound('Exam result not found');
     const scope = resolveSchoolScope(actor);
     if (scope && res.exam.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, res.studentId);
     const teacherScope = await resolveTeacherScope(actor);
     if (teacherScope) assertResultInScope(teacherScope, res);
     return res;
@@ -189,6 +195,8 @@ export const examResultsService = {
     actor: Actor,
   ) {
     const scope = resolveSchoolScope(actor);
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, params.studentId);
     const student = await prisma.studentProfile.findUnique({ where: { id: params.studentId } });
     if (!student) throw ApiError.notFound('Student not found');
     if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');

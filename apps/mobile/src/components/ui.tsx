@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 
 import { Icon, type IconName } from './Icon';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius } from '../theme';
 
 export function Spinner({ label }: { label?: string }) {
   return (
@@ -66,16 +66,14 @@ export function PageHeader({
   icon?: IconName;
 }) {
   return (
-    <View style={[styles.pageHeader, shadow]}>
+    <View style={styles.pageHeader}>
       <View style={styles.pageHeaderHeading}>
-        {icon ? (
-          <View style={styles.pageHeaderIcon}>
-            <Icon name={icon} size={20} color={colors.primary} />
-          </View>
-        ) : null}
-        <View>
+        {icon ? <Icon name={icon} size={18} color={colors.primary} /> : null}
+        <View style={styles.pageHeaderText}>
           <Text style={styles.pageHeaderTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text> : null}
+          {subtitle ? (
+            <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text>
+          ) : null}
         </View>
       </View>
       {actions ? <View style={styles.pageHeaderActions}>{actions}</View> : null}
@@ -85,12 +83,12 @@ export function PageHeader({
 
 export type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info';
 
-const statToneStyles: Record<StatTone, ViewStyle> = {
-  primary: {},
-  success: { borderLeftWidth: 4, borderLeftColor: colors.success },
-  warning: { borderLeftWidth: 4, borderLeftColor: colors.warning },
-  danger: { borderLeftWidth: 4, borderLeftColor: colors.danger },
-  info: { borderLeftWidth: 4, borderLeftColor: colors.info },
+const STAT_TONE_COLORS: Record<StatTone, string> = {
+  primary: colors.primary,
+  success: colors.success,
+  warning: colors.warning,
+  danger: colors.danger,
+  info: colors.info,
 };
 
 export function StatCard({
@@ -116,14 +114,15 @@ export function StatCard({
   const content = (
     <>
       <View style={styles.statCardTop}>
-        <Text style={styles.statCardLabel} numberOfLines={1}>
-          {label}
-        </Text>
-        {icon ? (
-          <View style={styles.statCardIcon}>
-            <Icon name={icon} size={18} color={iconColor ?? colors.primary} />
-          </View>
-        ) : null}
+        <View style={styles.statCardLabelRow}>
+          {tone !== 'primary' ? (
+            <View style={[styles.statDot, { backgroundColor: STAT_TONE_COLORS[tone] }]} />
+          ) : null}
+          <Text style={styles.statCardLabel} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+        {icon ? <Icon name={icon} size={17} color={iconColor ?? colors.textFaint} /> : null}
       </View>
       <Text style={styles.statCardValue} numberOfLines={1}>
         {value}
@@ -144,8 +143,6 @@ export function StatCard({
         accessibilityLabel={label}
         style={({ pressed }) => [
           styles.statCard,
-          statToneStyles[tone],
-          shadow,
           style,
           pressed ? styles.statCardPressed : null,
         ]}
@@ -155,11 +152,7 @@ export function StatCard({
     );
   }
 
-  return (
-    <View style={[styles.statCard, statToneStyles[tone], shadow, style]}>
-      {content}
-    </View>
-  );
+  return <View style={[styles.statCard, style]}>{content}</View>;
 }
 
 export function StatGrid({
@@ -333,51 +326,46 @@ const styles = {
     fontWeight: '700',
   } satisfies TextStyle,
   pageHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingTop: 2,
+    paddingBottom: 2,
+    gap: 8,
   } satisfies ViewStyle,
   pageHeaderHeading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   } satisfies ViewStyle,
-  pageHeaderIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pageHeaderText: {
+    flex: 1,
+    minWidth: 0,
   } satisfies ViewStyle,
   pageHeaderTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+    letterSpacing: -0.4,
     color: colors.text,
   } satisfies TextStyle,
   pageHeaderSubtitle: {
     fontSize: 14,
+    lineHeight: 20,
     color: colors.textMuted,
     marginTop: 2,
   } satisfies TextStyle,
   pageHeaderActions: {
-    marginTop: 4,
+    marginTop: 2,
   } satisfies ViewStyle,
   statCard: {
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     padding: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    minWidth: 150,
+    minWidth: 140,
     gap: 4,
   } satisfies ViewStyle,
   statCardPressed: {
-    opacity: 0.9,
+    opacity: 0.82,
   } satisfies ViewStyle,
   statGrid: {
     flexDirection: 'row',
@@ -395,26 +383,37 @@ const styles = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+  } satisfies ViewStyle,
+  statCardLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  } satisfies ViewStyle,
+  statDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   } satisfies ViewStyle,
   statCardLabel: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    fontSize: 12.5,
+    fontWeight: '600',
     color: colors.textMuted,
+    flexShrink: 1,
   } satisfies TextStyle,
-  statCardIcon: {
-    marginTop: 2,
-  } satisfies ViewStyle,
   statCardValue: {
-    fontSize: 24,
+    fontSize: 23,
+    lineHeight: 29,
     fontWeight: '800',
+    letterSpacing: -0.3,
     color: colors.text,
     marginTop: 2,
   } satisfies TextStyle,
   statCardHint: {
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: 2,
   } satisfies TextStyle,
   skeletonGrid: {
     flexDirection: 'row',

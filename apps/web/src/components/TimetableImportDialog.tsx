@@ -59,7 +59,7 @@ export function TimetableImportDialog({
       .catch(() => {
         if (!active) return;
         setPreview(null);
-        setParseError('The file could not be read. Save it as .xlsx, .csv or .sql and try again.');
+        setParseError('The file could not be read. Save it as .xlsx or .csv and try again.');
       });
     return () => {
       active = false;
@@ -110,7 +110,7 @@ export function TimetableImportDialog({
     <Modal title="Import timetable" onClose={onClose}>
       <div className="form form--wide">
         <p className="muted">
-          Upload an Excel/CSV file or paste CSV/SQL. Columns are matched by name
+          Upload an Excel/CSV file or paste CSV. Columns are matched by name
           (Class, Section, Subject, Teacher, Day, Start, End, Room, Materials). Each
           row is validated before anything is saved.
         </p>
@@ -132,20 +132,20 @@ export function TimetableImportDialog({
 
         <div className="field">
           <label className="field__label" htmlFor="timetable-file">
-            Spreadsheet file (.xlsx, .csv, .sql)
+            Spreadsheet file (.xlsx, .csv)
           </label>
           <input
             id="timetable-file"
             className="field__input"
             type="file"
-            accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt,.sql"
+            accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt"
             onChange={onFileChange}
           />
         </div>
 
         <div className="field">
           <label className="field__label" htmlFor="timetable-text">
-            …or paste CSV / SQL INSERT statements
+            …or paste CSV
           </label>
           <textarea
             id="timetable-text"

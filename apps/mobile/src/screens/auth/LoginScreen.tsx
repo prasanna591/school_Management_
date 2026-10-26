@@ -8,7 +8,6 @@ import { Icon } from '../../components/Icon';
 import { type LoginPortal } from '../../lib/api';
 import { ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { ROUTES } from '../../navigation/routes';
 import { colors, radius, shadow } from '../../theme';
 
 const PORTALS: { value: LoginPortal; label: string }[] = [
@@ -46,8 +45,6 @@ export function LoginScreen({ portal = 'admin' }: { portal?: LoginPortal }) {
               <Pressable
                 key={tab.value}
                 onPress={() => {
-                  // TEMP DEBUG ([SS-DEBUG] logs are safe to delete after verification).
-                  console.log('[SS-DEBUG] LoginScreen: portal tab pressed', tab.value);
                   setSelected(tab.value);
                 }}
                 style={[styles.tab, selected === tab.value ? styles.tabActive : null]}
@@ -76,22 +73,11 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async () => {
-    // TEMP DEBUG ([SS-DEBUG] logs are safe to delete after verification).
-    // Never logs the email or password — only the portal and outcome.
-    console.log('[SS-DEBUG] LoginScreen: submit pressed', { portal });
     setError(null);
     setSubmitting(true);
     try {
       await login(email.trim(), password, portal);
-      // TEMP DEBUG: reached only after a successful API round-trip.
-      console.log('[SS-DEBUG] LoginScreen: login succeeded', { portal });
     } catch (err) {
-      // TEMP DEBUG: status/code only — no credentials, no tokens.
-      console.log('[SS-DEBUG] LoginScreen: login failed', {
-        portal,
-        status: err instanceof ApiError ? err.status : 'network-or-unknown',
-        code: err instanceof ApiError ? err.code : undefined,
-      });
       setError(
         err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.',
       );
@@ -138,6 +124,19 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
       >
         <Text style={styles.submitText}>{submitting ? 'Signing in…' : 'Sign in'}</Text>
       </Pressable>
+
+      {process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? (
+        <View style={{ marginTop: 12, gap: 8 }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center' }}>Demo Quick Login (demo1234)</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('principal@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('principal@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Principal</Text></Pressable>
+            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('teacher@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('teacher@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Teacher</Text></Pressable>
+            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('accountant@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('accountant@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Accountant</Text></Pressable>
+            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('parent@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('parent@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Parent</Text></Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <SiteLink />
     </View>
   );

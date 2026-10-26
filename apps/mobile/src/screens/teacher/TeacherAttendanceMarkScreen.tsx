@@ -205,42 +205,6 @@ export function TeacherAttendanceMarkScreen() {
     [entries],
   );
 
-  /**
-   * Creates the row, and when the server already holds one for this student
-   * and day (`Attendance` is unique on `studentId + date`), adopts that row and
-   * patches it instead. Without this a retry after a lost response would keep
-   * hitting the unique constraint and the register could never converge.
-   * `GET /attendances?studentId=` and `PATCH /attendances/:id` are both scoped
-   * to the teacher's own sections server-side, so this cannot reach other data.
-   */
-  const createOrAdoptRecord = async (plan: RegisterEntry): Promise<{ id: string }> => {
-    try {
-      const saved = await api.post<{ id: string }>('/attendances', {
-        studentId: plan.studentId,
-        sectionId,
-        date,
-        status: plan.status,
-      });
-      if (!saved?.id) throw new Error('The server did not return a record id.');
-      return saved;
-    } catch (err) {
-      let existing: AttendanceRecord | null = null;
-      try {
-        const page = await api.list<AttendanceRecord>('/attendances', {
-          studentId: plan.studentId,
-          date,
-          limit: 1,
-        });
-        existing = page.items[0] ?? null;
-      } catch {
-        existing = null;
-      }
-      if (!existing) throw err;
-      await api.patch(`/attendances/${existing.id}`, { status: plan.status });
-      return existing;
-    }
-  };
-
   const handleSave = async () => {
     // Synchronous re-entrancy guard: two quick taps both see `saving === false`.
     if (savingRef.current) return;
@@ -253,43 +217,35 @@ export function TeacherAttendanceMarkScreen() {
     savingRef.current = true;
     setSaving(true);
     setProgress({ done: 0, total: plans.length });
-    let created = 0;
-    let updated = 0;
-    const failed: string[] = [];
-    const createdIds = new Map<string, string>();
-    const succeeded = new Set<string>();
+    const created = plans.filter((plan) => !plan.recordId).length;
+    const updated = plans.length - created;
     try {
-      for (const plan of plans) {
-        try {
-          if (plan.recordId) {
-            await api.patch(`/attendances/${plan.recordId}`, { status: plan.status });
-            updated += 1;
-          } else {
-            createdIds.set(plan.studentId, (await createOrAdoptRecord(plan)).id);
-            created += 1;
-          }
-          succeeded.add(plan.studentId);
-        } catch (err) {
-          failed.push(`${plan.name} (${err instanceof Error ? err.message : 'Failed'})`);
-        }
-        setProgress({ done: created + updated + failed.length, total: plans.length });
-      }
-      // Only rows the server actually confirmed move forward. A failed row
-      // keeps its old `initialStatus`, so it stays in `plans` and a retry
-      // re-sends it instead of looking saved while nothing was written.
+      const result = await api.post<{ saved: number; records: AttendanceRecord[] }>(
+        '/attendances/bulk',
+        {
+          sectionId,
+          date,
+          records: plans.map((plan) => ({ studentId: plan.studentId, status: plan.status })),
+        },
+      );
+      const savedIds = new Map<string, string>();
+      for (const record of result.records ?? []) savedIds.set(record.studentId, record.id);
+      // Only rows the server confirmed move forward. The bulk call is atomic,
+      // so on failure nothing is marked as saved and a retry can re-send it.
       setEntries((prev) =>
         prev.map((entry) => {
-          if (!succeeded.has(entry.studentId)) return entry;
+          if (!plans.some((plan) => plan.studentId === entry.studentId)) return entry;
           return {
             ...entry,
             initialStatus: entry.status,
-            recordId: entry.recordId ?? createdIds.get(entry.studentId) ?? null,
+            recordId: savedIds.get(entry.studentId) ?? entry.recordId,
           };
         }),
       );
-      setSummary(
-        `Saved ${created} new and ${updated} updated.${failed.length ? ` ${failed.length} failed: ${failed.join('; ')}` : ''}`,
-      );
+      setProgress({ done: plans.length, total: plans.length });
+      setSummary(`Saved ${created} new and ${updated} updated.`);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'The register could not be saved.');
     } finally {
       savingRef.current = false;
       setSaving(false);

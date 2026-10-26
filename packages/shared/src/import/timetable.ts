@@ -4,9 +4,9 @@ import { z } from 'zod';
 /**
  * Timetable import helpers shared by the API and the web client.
  *
- * Admins upload timetables as spreadsheets (Excel/CSV) or paste SQL INSERT
- * statements. Both the browser (to preview and validate a file before sending
- * it) and the server (to validate the request body) need the same parsing and
+ * Admins upload timetables as spreadsheets (Excel/CSV) or paste delimited text.
+ * Both the browser (to preview and validate a file before sending it) and the
+ * server (to validate the request body) need the same parsing and
  * normalisation rules, so they live here.
  */
 
@@ -98,7 +98,7 @@ alias('endTime', ['endtime', 'end time', 'end', 'to', 'time to', 'finishes', 'fi
 alias('room', ['room', 'classroom', 'class room', 'venue', 'location', 'hall']);
 alias('materials', ['materials', 'material', 'notes', 'note', 'description', 'topic', 'remarks']);
 
-/** Reduce a spreadsheet/SQL column heading to a canonical import field. */
+/** Reduce a spreadsheet column heading to a canonical import field. */
 export function canonicalField(header: string): CanonicalField | undefined {
   const key = String(header)
     .toLowerCase()
@@ -319,122 +319,6 @@ export function parseTimetableCsv(text: string): ParsedImportRows {
   return { headers, rows, issues };
 }
 
-function parseSqlTuples(text: string): string[][] {
-  const tuples: string[][] = [];
-  let index = 0;
-  while (index < text.length) {
-    if (text[index] !== '(') {
-      index++;
-      continue;
-    }
-    index++;
-    const values: string[] = [];
-    let value = '';
-    let inQuote = false;
-    let quote = '';
-    let depth = 0;
-    for (; index < text.length; index++) {
-      const char = text[index];
-      if (inQuote) {
-        if (char === quote) {
-          if (text[index + 1] === quote) {
-            value += char;
-            index++;
-          } else {
-            inQuote = false;
-          }
-        } else if (char === '\\') {
-          value += text[index + 1] ?? '';
-          index++;
-        } else {
-          value += char;
-        }
-        continue;
-      }
-      if (char === "'" || char === '"') {
-        inQuote = true;
-        quote = char;
-        continue;
-      }
-      if (char === '(') {
-        depth++;
-        value += char;
-        continue;
-      }
-      if (char === ')') {
-        if (depth === 0) {
-          values.push(value.trim());
-          value = '';
-          break;
-        }
-        depth--;
-        value += char;
-        continue;
-      }
-      if (char === ',' && depth === 0) {
-        values.push(value.trim());
-        value = '';
-        continue;
-      }
-      value += char;
-    }
-    tuples.push(values);
-    index++;
-  }
-  return tuples;
-}
-
-function sqlValue(value: string): string {
-  return value.toUpperCase() === 'NULL' ? '' : value;
-}
-
-/** Parse `INSERT INTO ... (columns) VALUES (...), (...);` statements. */
-export function parseTimetableSql(text: string): ParsedImportRows {
-  const statementRegex =
-    /insert\s+into\s+(?:`[^`]+`|"[^"]+"|[\w.]+)\s*(?:\(([^)]*)\))?\s*values\s*([\s\S]*?);/gi;
-  const issues: TimetableImportIssue[] = [];
-  const rows: Array<Record<string, unknown>> = [];
-  let headers: string[] = [];
-  let matched = false;
-  let match: RegExpExecArray | null;
-
-  while ((match = statementRegex.exec(text)) !== null) {
-    matched = true;
-    const columnList = match[1];
-    if (!columnList) {
-      issues.push({
-        row: null,
-        field: null,
-        message:
-          'Each INSERT must list its columns, e.g. INSERT INTO timetable (class, section, subject, day, start, end) VALUES (...);',
-      });
-      continue;
-    }
-    const columns = columnList.split(',').map((column) => column.trim().replace(/[`"[\]]/g, ''));
-    const fields = columns.map(canonicalField);
-    if (headers.length === 0) headers = columns;
-
-    for (const tuple of parseSqlTuples(match[2] ?? '')) {
-      if (tuple.every((value) => value === '')) continue;
-      const row: Record<string, unknown> = {};
-      fields.forEach((field, index) => {
-        if (field && row[field] === undefined) row[field] = sqlValue(tuple[index] ?? '');
-      });
-      rows.push(row);
-    }
-  }
-
-  if (!matched) {
-    issues.push({
-      row: null,
-      field: null,
-      message: 'No INSERT statements were found in the pasted SQL.',
-    });
-  }
-
-  return { headers, rows, issues };
-}
-
 /** Row schema: raw values, normalised and validated for the importer. */
 export const timetableImportRowSchema = z
   .object({
@@ -486,7 +370,6 @@ export const importTimetableSchema = z
   .object({
     schoolId: z.string().cuid().optional(),
     mode: z.enum(TIMETABLE_IMPORT_MODES).default('upsert'),
-    format: z.enum(['csv', 'sql']).optional(),
     content: z.string().max(1_000_000, 'The pasted file is too large').optional(),
     rows: z
       .array(z.record(z.unknown()))
@@ -494,6 +377,6 @@ export const importTimetableSchema = z
       .optional(),
   })
   .refine((data) => Boolean(data.content?.trim()) || (data.rows?.length ?? 0) > 0, {
-    message: 'Provide a spreadsheet, pasted CSV/SQL data, or parsed rows to import.',
+    message: 'Provide a spreadsheet, pasted CSV data, or parsed rows to import.',
   });
 export type ImportTimetableInput = z.infer<typeof importTimetableSchema>;

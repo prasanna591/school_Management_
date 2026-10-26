@@ -23,19 +23,6 @@ describe('parseTimetableText', () => {
     });
   });
 
-  it('parses SQL INSERT statements', () => {
-    const sql =
-      "INSERT INTO timetable (section, subject, day, start, end) VALUES ('A','Math','Monday','9:00','10:00');";
-    const parsed = parseTimetableText(sql);
-    expect(parsed.rows).toHaveLength(1);
-    expect(parsed.rows[0]).toMatchObject({
-      section: 'A',
-      subject: 'Math',
-      day: 'Monday',
-      startTime: '9:00',
-    });
-  });
-
   it('flags a file without recognised columns', () => {
     const parsed = parseTimetableText('a,b,c\n1,2,3');
     expect(parsed.rows).toHaveLength(0);

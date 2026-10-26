@@ -4,12 +4,11 @@ import {
   canonicalField,
   canonicalizeImportRow,
   parseTimetableCsv,
-  parseTimetableSql,
   timetableImportRowSchema,
 } from '@smartschool/shared';
 import * as XLSX from 'xlsx';
 
-export type ImportFileFormat = 'csv' | 'sql' | 'xlsx';
+export type ImportFileFormat = 'csv' | 'xlsx';
 
 export interface ImportPreview {
   source: 'file' | 'paste';
@@ -82,13 +81,12 @@ function parseWorkbook(data: ArrayBuffer): ParsedImportRows {
 }
 
 export function parseTimetableText(text: string): ParsedImportRows {
-  return /insert\s+into/i.test(text) ? parseTimetableSql(text) : parseTimetableCsv(text);
+  return parseTimetableCsv(text);
 }
 
 export function previewPastedText(text: string): ImportPreview {
-  const format: ImportFileFormat = /insert\s+into/i.test(text) ? 'sql' : 'csv';
   const parsed = parseTimetableText(text);
-  return { source: 'paste', fileName: null, format, rows: parsed.rows, issues: parsed.issues };
+  return { source: 'paste', fileName: null, format: 'csv', rows: parsed.rows, issues: parsed.issues };
 }
 
 export async function previewSpreadsheetFile(file: File): Promise<ImportPreview> {
@@ -99,6 +97,5 @@ export async function previewSpreadsheetFile(file: File): Promise<ImportPreview>
   }
   const text = await file.text();
   const parsed = parseTimetableText(text);
-  const format: ImportFileFormat = /insert\s+into/i.test(text) ? 'sql' : 'csv';
-  return { source: 'file', fileName: file.name, format, rows: parsed.rows, issues: parsed.issues };
+  return { source: 'file', fileName: file.name, format: 'csv', rows: parsed.rows, issues: parsed.issues };
 }

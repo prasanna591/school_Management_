@@ -18,6 +18,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed:demo": "tsx prisma/seed-demo.ts",
     "prisma:seed-students": "tsx prisma/seed-students.ts",
     "prisma:seed-classes": "tsx prisma/seed-classes.ts",
     "prisma:seed-subjects": "tsx prisma/seed-subjects.ts",

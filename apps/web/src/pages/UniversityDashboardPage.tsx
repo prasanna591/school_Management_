@@ -437,7 +437,7 @@ export function UniversityDashboardPage() {
             <Icon name="timetable" size={14} />
             {today}
           </p>
-          <h1 className="uni-title">University dashboard</h1>
+          <h1 className="uni-title">School dashboard</h1>
           <p className="uni-subtitle">Students, staff, exams and performance in real time.</p>
         </div>
         <div className="uni-head__controls">

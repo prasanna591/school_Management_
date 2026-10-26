@@ -383,6 +383,18 @@ function PortalLogin({ portal, helper, headline, points }: PortalLoginProps) {
                 'Sign in'
               )}
             </button>
+
+            {import.meta.env.VITE_DEMO_MODE === 'true' ? (
+              <div style={{ marginTop: '12px', display: 'grid', gap: '8px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--login-muted, var(--muted))', textAlign: 'center' }}>Demo Quick Login (password: demo1234)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  <button type="button" className="login__submit" style={{ padding: '8px' }} onClick={async () => { setEmail('principal@demo.school'); setPassword('demo1234'); setRemember(true); window.localStorage.setItem(REMEMBERED_EMAIL_KEY, 'principal@demo.school'); setTouched({ email: true, password: true }); try { setSubmitting(true); await login('principal@demo.school', 'demo1234', portal); const target = resolveLoginTarget(user?.role); navigate(target === '/' ? '/' : target, { replace: true, state: from ? { from } : undefined }); } catch (e) { setError((e as ApiError)?.message || (e as Error)?.message || 'Login failed'); } finally { setSubmitting(false); } }}>Principal</button>
+                  <button type="button" className="login__submit" style={{ padding: '8px' }} onClick={async () => { setEmail('teacher@demo.school'); setPassword('demo1234'); setRemember(true); window.localStorage.setItem(REMEMBERED_EMAIL_KEY, 'teacher@demo.school'); setTouched({ email: true, password: true }); try { setSubmitting(true); await login('teacher@demo.school', 'demo1234', portal); const target = resolveLoginTarget(user?.role); navigate(target === '/' ? '/' : target, { replace: true, state: from ? { from } : undefined }); } catch (e) { setError((e as ApiError)?.message || (e as Error)?.message || 'Login failed'); } finally { setSubmitting(false); } }}>Teacher</button>
+                  <button type="button" className="login__submit" style={{ padding: '8px' }} onClick={async () => { setEmail('accountant@demo.school'); setPassword('demo1234'); setRemember(true); window.localStorage.setItem(REMEMBERED_EMAIL_KEY, 'accountant@demo.school'); setTouched({ email: true, password: true }); try { setSubmitting(true); await login('accountant@demo.school', 'demo1234', portal); const target = resolveLoginTarget(user?.role); navigate(target === '/' ? '/' : target, { replace: true, state: from ? { from } : undefined }); } catch (e) { setError((e as ApiError)?.message || (e as Error)?.message || 'Login failed'); } finally { setSubmitting(false); } }}>Accountant</button>
+                  <button type="button" className="login__submit" style={{ padding: '8px' }} onClick={async () => { setEmail('parent@demo.school'); setPassword('demo1234'); setRemember(true); window.localStorage.setItem(REMEMBERED_EMAIL_KEY, 'parent@demo.school'); setTouched({ email: true, password: true }); try { setSubmitting(true); await login('parent@demo.school', 'demo1234', portal); const target = resolveLoginTarget(user?.role); navigate(target === '/' ? '/' : target, { replace: true, state: from ? { from } : undefined }); } catch (e) { setError((e as ApiError)?.message || (e as Error)?.message || 'Login failed'); } finally { setSubmitting(false); } }}>Parent</button>
+                </div>
+              </div>
+            ) : null}
           </form>
 
           <p className="login__tip">

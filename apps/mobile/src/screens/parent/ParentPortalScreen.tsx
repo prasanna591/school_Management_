@@ -19,13 +19,12 @@ import {
   type ParentChipTone,
   type ParentQuickAction,
 } from '../../components/parent/parentUi';
-import { SkeletonList, SkeletonPanels, StatCard, StatGrid } from '../../components/ui';
+import { SkeletonList, SkeletonPanels } from '../../components/ui';
 import { api } from '../../lib/api';
-import { useAuth } from '../../lib/auth';
-import { formatCurrency, formatDate, formatDateTime, humanize, initials } from '../../lib/format';
+import { formatCurrency, formatDate, humanize, initials } from '../../lib/format';
 import { teacherNameOf, timeRangeOf, type TimetableItem } from '../../lib/timetable';
 import { useAsync } from '../../lib/useAsync';
-import { parentColors } from '../../theme';
+import { colors, parentColors } from '../../theme';
 import { ROUTES } from '../../navigation/routes';
 
 type Nav = { navigate: (route: string, params?: object) => void };
@@ -95,13 +94,6 @@ interface HomeworkRow {
   submission: { status: string } | null;
 }
 
-interface NoticeRow {
-  id: string;
-  title: string;
-  isPinned: boolean;
-  publishedAt: string;
-}
-
 const WEEKDAY_BY_INDEX = [
   'SUNDAY',
   'MONDAY',
@@ -131,13 +123,6 @@ function klassOf(child: ChildSummary): string {
   return [child.className, child.sectionName].filter(Boolean).join(' · ') || '—';
 }
 
-function attendanceTone(indicator: string): 'success' | 'warning' | 'danger' | 'primary' {
-  if (indicator === 'GOOD') return 'success';
-  if (indicator === 'WARNING') return 'warning';
-  if (indicator === 'CRITICAL') return 'danger';
-  return 'primary';
-}
-
 function statusTone(status: string): ParentChipTone {
   const value = status.toUpperCase();
   if (['PAID', 'PRESENT', 'APPROVED', 'COMPLETED', 'SUBMITTED'].includes(value)) return 'success';
@@ -146,13 +131,17 @@ function statusTone(status: string): ParentChipTone {
   return 'default';
 }
 
+function isDone(status: string | undefined): boolean {
+  if (!status) return false;
+  return ['SUBMITTED', 'GRADED', 'COMPLETED'].includes(status.toUpperCase());
+}
+
 /**
- * The parent portal dashboard — the same real data as the web Parent Portal
- * (`/parent`): a greeting hero for the selected child, summary tiles, today's
- * classes, recent homework, pending fees, recent announcements and quick links.
+ * The parent portal home: one calm summary for the selected child, then only
+ * the things a parent acts on today — quick actions, today's classes and the
+ * homework coming due. Everything else lives in the drawer.
  */
 export function ParentPortalScreen() {
-  const { user } = useAuth();
   const navigation = useNavigation<Nav>();
 
   const overviewState = useAsync<ParentOverview>(
@@ -228,15 +217,10 @@ export function ParentPortalScreen() {
     [child?.id],
   );
 
-  const noticesState = useAsync<NoticeRow[]>(
-    () => api.list<NoticeRow>('/notices', { page: 1, limit: 4 }).then((page) => page.items),
-    [],
-  );
-
-  if (overviewState.loading || noticesState.loading) {
+  if (overviewState.loading) {
     return (
       <ParentPage>
-        <SkeletonPanels count={4} />
+        <SkeletonPanels count={3} />
       </ParentPage>
     );
   }
@@ -257,7 +241,6 @@ export function ParentPortalScreen() {
           onRetry={() => {
             overviewState.reload();
             homeworkState.reload();
-            noticesState.reload();
           }}
         />
       </ParentPage>
@@ -279,30 +262,24 @@ export function ParentPortalScreen() {
   const attendance = child.attendance;
   const activities = child.activities;
   const pendingInvoices = child.invoices.filter((invoice) => Number(invoice.balance) > 0);
-  const homework = (homeworkState.data ?? []).slice(0, 5);
-  const notices = noticesState.data ?? [];
+  const homework = (homeworkState.data ?? [])
+    .filter((item) => !isDone(item.submission?.status))
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 4);
 
   const todayName = WEEKDAY_BY_INDEX[new Date().getDay()] ?? 'MONDAY';
   const todayClasses = child.timetable
     .filter((entry) => entry.dayOfWeek === todayName)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-  const syllabusPercent =
-    activities.syllabusTotal > 0
-      ? `${Math.round((activities.syllabusCompleted / activities.syllabusTotal) * 100)}%`
-      : '—';
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .slice(0, 4);
 
   const actions: ParentQuickAction[] = [
-    { key: 'attendance', label: 'Attendance', description: 'Daily & monthly', icon: 'attendance', onPress: () => navigation.navigate(ROUTES.parent.attendance) },
-    { key: 'homework', label: 'Homework', description: 'Assignments & notes', icon: 'homework', onPress: () => navigation.navigate(ROUTES.parent.homework) },
-    { key: 'timetable', label: 'Timetable', description: 'Weekly schedule', icon: 'timetable', onPress: () => navigation.navigate(ROUTES.parent.timetable) },
-    { key: 'results', label: 'Results', description: 'Marks & grades', icon: 'marks', onPress: () => navigation.navigate(ROUTES.parent.results) },
-    { key: 'syllabus', label: 'Syllabus', description: 'Units & progress', icon: 'subject', onPress: () => navigation.navigate(ROUTES.parent.syllabus) },
-    { key: 'invoices', label: 'Fees', description: 'Invoices & receipts', icon: 'finance', onPress: () => navigation.navigate(ROUTES.parent.invoices) },
-    { key: 'teachers', label: 'Teachers', description: 'Contact & message', icon: 'teacher', onPress: () => navigation.navigate(ROUTES.parent.teachers) },
-    { key: 'notices', label: 'Announcements', description: 'School notices', icon: 'star', onPress: () => navigation.navigate(ROUTES.parent.notices) },
-    { key: 'vehicle', label: 'Transport', description: 'Bus & route', icon: 'bus', onPress: () => navigation.navigate(ROUTES.parent.vehicle) },
-    { key: 'notifications', label: 'Notifications', description: 'Your alerts', icon: 'bell', onPress: () => navigation.navigate(ROUTES.admin.notifications) },
+    { key: 'attendance', label: 'Attendance', icon: 'attendance', onPress: () => navigation.navigate(ROUTES.parent.attendance) },
+    { key: 'homework', label: 'Homework', icon: 'homework', onPress: () => navigation.navigate(ROUTES.parent.homework) },
+    { key: 'timetable', label: 'Timetable', icon: 'timetable', onPress: () => navigation.navigate(ROUTES.parent.timetable) },
+    { key: 'results', label: 'Results', icon: 'marks', onPress: () => navigation.navigate(ROUTES.parent.results) },
+    { key: 'fees', label: 'Fees', icon: 'finance', onPress: () => navigation.navigate(ROUTES.parent.invoices) },
+    { key: 'teachers', label: 'Teachers', icon: 'teacher', onPress: () => navigation.navigate(ROUTES.parent.teachers) },
   ];
 
   const todayLabel = new Date().toLocaleDateString(undefined, {
@@ -314,12 +291,9 @@ export function ParentPortalScreen() {
   return (
     <ParentPage>
       <ParentHero
-        eyebrow={`Welcome back, ${user?.firstName ?? 'Parent'}`}
         title={childName(child)}
         subtitle={`${klassOf(child)} · ${todayLabel}`}
-        statLabel="Attendance"
-        statValue={`${attendance.percentage}%`}
-        statHint={`${attendance.present} of ${attendance.total} days present`}
+        badge={{ label: 'Attendance', value: `${attendance.percentage}%` }}
         avatarUrl={child.photoUrl}
         avatarFallback={childInitials(child)}
         onEditPhoto={pickChildPhoto}
@@ -346,75 +320,51 @@ export function ParentPortalScreen() {
         </View>
       ) : null}
 
-      <StatGrid>
-        <StatCard
-          label="Attendance"
-          value={`${attendance.percentage}%`}
-          hint={`${attendance.present} present · ${attendance.absent} absent`}
-          icon="attendance"
-          tone={attendanceTone(attendance.indicator)}
-          iconColor={parentColors.accent}
-        />
-        <StatCard
+      <View style={styles.metrics}>
+        <Metric
           label="Homework due"
-          value={activities.dueToday}
-          hint={`${activities.upcomingHomework} due this week`}
-          icon="homework"
-          tone={activities.dueToday > 0 ? 'warning' : 'primary'}
-          iconColor={parentColors.accent}
+          value={String(activities.dueToday)}
+          hint={`${activities.upcomingHomework} this week`}
+          tone={activities.dueToday > 0 ? 'warning' : 'default'}
         />
-        <StatCard
+        <Metric
           label="Classes today"
-          value={activities.todayClasses}
+          value={String(activities.todayClasses)}
           hint="Scheduled periods"
-          icon="timetable"
-          iconColor={parentColors.accent}
         />
-        <StatCard
-          label="Overall result"
-          value={`${child.overallResult.percentage}%`}
-          hint={child.overallResult.grade ? `Grade ${child.overallResult.grade}` : 'No results yet'}
-          icon="marks"
-          iconColor={parentColors.accent}
-        />
-        <StatCard
-          label="Fees outstanding"
+        <Metric
+          label="Fees due"
           value={formatCurrency(child.outstanding)}
-          hint={`${pendingInvoices.length} unpaid invoice${pendingInvoices.length === 1 ? '' : 's'}`}
-          icon="finance"
-          tone={child.outstanding > 0 ? 'danger' : 'success'}
-          iconColor={parentColors.accent}
+          hint={`${pendingInvoices.length} unpaid`}
+          tone={child.outstanding > 0 ? 'danger' : 'default'}
         />
-        <StatCard
-          label="Syllabus covered"
-          value={syllabusPercent}
-          hint={
-            activities.syllabusTotal > 0
-              ? `${activities.syllabusCompleted}/${activities.syllabusTotal} units`
-              : 'No syllabus published'
-          }
-          icon="subject"
-          iconColor={parentColors.accent}
-        />
-      </StatGrid>
+      </View>
+
+      <ParentPanel title="Quick actions">
+        <ParentQuickActions items={actions} />
+      </ParentPanel>
 
       <ParentPanel
-        title="Today's classes"
+        title="Today"
         subtitle={todayLabel}
         icon="timetable"
+        action={
+          <PanelLink
+            label="Timetable"
+            onPress={() => navigation.navigate(ROUTES.parent.timetable)}
+          />
+        }
       >
         {todayClasses.length === 0 ? (
           <ParentEmpty icon="timetable" message="No classes are scheduled for today." />
         ) : (
-          <View style={{ gap: 8 }}>
+          <View>
             {todayClasses.map((entry) => (
               <ParentRow
                 key={entry.id}
                 title={entry.subject?.name ?? 'Class'}
                 meta={[teacherNameOf(entry), entry.room].filter(Boolean).join(' · ') || undefined}
-                aside={
-                  <Text style={styles.aside}>{timeRangeOf(entry)}</Text>
-                }
+                aside={<Text style={styles.aside}>{timeRangeOf(entry)}</Text>}
               />
             ))}
           </View>
@@ -422,8 +372,8 @@ export function ParentPortalScreen() {
       </ParentPanel>
 
       <ParentPanel
-        title="Recent homework"
-        subtitle={`Latest assignments for ${childName(child)}`}
+        title="Due soon"
+        subtitle="Homework that still needs attention"
         icon="homework"
         action={<PanelLink label="All" onPress={() => navigation.navigate(ROUTES.parent.homework)} />}
       >
@@ -432,51 +382,21 @@ export function ParentPortalScreen() {
         ) : homeworkState.error ? (
           <ParentEmpty icon="homework" message="Could not load homework right now." />
         ) : homework.length === 0 ? (
-          <ParentEmpty icon="homework" message="No homework has been set yet." />
+          <ParentEmpty icon="check" message="Nothing due right now." hint="All caught up." />
         ) : (
-          <View style={{ gap: 8 }}>
+          <View>
             {homework.map((item) => (
               <ParentRow
                 key={item.id}
                 title={item.title}
-                meta={`${item.subject?.name ?? 'General'} · due ${formatDate(item.dueDate)}`}
-                aside={
-                  <ParentChip
-                    label={item.submission ? humanize(item.submission.status) : 'Not submitted'}
-                    tone={
-                      item.submission ? statusTone(item.submission.status) : 'warning'
-                    }
-                  />
-                }
-              />
-            ))}
-          </View>
-        )}
-      </ParentPanel>
-
-      <ParentPanel
-        title="Pending fees"
-        subtitle="Invoices with an outstanding balance"
-        icon="finance"
-        action={<PanelLink label="Invoices" onPress={() => navigation.navigate(ROUTES.parent.invoices)} />}
-      >
-        {pendingInvoices.length === 0 ? (
-          <ParentEmpty
-            icon="check"
-            message="No pending fees."
-            hint="Every issued invoice is fully paid."
-          />
-        ) : (
-          <View style={{ gap: 8 }}>
-            {pendingInvoices.map((invoice) => (
-              <ParentRow
-                key={invoice.id}
-                title={invoice.invoiceNo}
-                meta={`Due ${formatDate(invoice.dueDate)}`}
+                meta={item.subject?.name ?? 'General'}
                 aside={
                   <View style={styles.asideStack}>
-                    <Text style={styles.asideStrong}>{formatCurrency(invoice.balance)}</Text>
-                    <ParentChip label={humanize(invoice.status)} tone={statusTone(invoice.status)} />
+                    <Text style={styles.asideStrong}>{formatDate(item.dueDate)}</Text>
+                    <ParentChip
+                      label={item.submission ? humanize(item.submission.status) : 'Not submitted'}
+                      tone={item.submission ? statusTone(item.submission.status) : 'warning'}
+                    />
                   </View>
                 }
               />
@@ -484,32 +404,37 @@ export function ParentPortalScreen() {
           </View>
         )}
       </ParentPanel>
-
-      <ParentPanel
-        title="Recent announcements"
-        subtitle="Notices from the school"
-        icon="bell"
-        action={<PanelLink label="All" onPress={() => navigation.navigate(ROUTES.parent.notices)} />}
-      >
-        {notices.length === 0 ? (
-          <ParentEmpty icon="bell" message="No announcements have been published." />
-        ) : (
-          <View style={{ gap: 8 }}>
-            {notices.map((notice) => (
-              <ParentRow
-                key={notice.id}
-                title={`${notice.isPinned ? '📌 ' : ''}${notice.title}`}
-                meta={formatDateTime(notice.publishedAt)}
-              />
-            ))}
-          </View>
-        )}
-      </ParentPanel>
-
-      <ParentPanel title="Quick links" subtitle="Jump straight to a section" icon="sparkles">
-        <ParentQuickActions items={actions} />
-      </ParentPanel>
     </ParentPage>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  hint,
+  tone = 'default',
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'default' | 'warning' | 'danger';
+}) {
+  const valueColor =
+    tone === 'danger' ? colors.danger : tone === 'warning' ? colors.warning : colors.text;
+  return (
+    <View style={styles.metric}>
+      <Text style={styles.metricLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.metricValue, { color: valueColor }]} numberOfLines={1}>
+        {value}
+      </Text>
+      {hint ? (
+        <Text style={styles.metricHint} numberOfLines={1}>
+          {hint}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -528,18 +453,45 @@ function PanelLink({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 const styles = {
+  metrics: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  metric: {
+    flex: 1,
+    gap: 2,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  metricLabel: {
+    fontSize: 11.5,
+    fontWeight: '600' as const,
+    color: colors.textMuted,
+  },
+  metricValue: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '800' as const,
+  },
+  metricHint: {
+    fontSize: 10.5,
+    color: colors.textFaint,
+  },
   aside: {
     fontSize: 12.5,
-    color: '#475569',
+    color: colors.textMuted,
   },
   asideStack: {
     alignItems: 'flex-end' as const,
     gap: 4,
   },
   asideStrong: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700' as const,
-    color: '#0f172a',
+    color: colors.text,
   },
   panelLink: {
     flexDirection: 'row' as const,

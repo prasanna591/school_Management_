@@ -12,6 +12,38 @@ export const createAttendanceSchema = z.object({
 });
 export type CreateAttendanceInput = z.infer<typeof createAttendanceSchema>;
 
+const bulkAttendanceRecordSchema = z.object({
+  studentId: z.string().cuid(),
+  status: z.nativeEnum(AttendanceStatus),
+  remark: z.string().max(255).optional(),
+});
+
+export const bulkAttendanceSchema = z
+  .object({
+    schoolId: z.string().cuid().optional(),
+    sectionId: z.string().cuid(),
+    date: z.coerce.date(),
+    takenById: z.string().cuid().optional(),
+    records: z
+      .array(bulkAttendanceRecordSchema)
+      .min(1, 'Provide at least one attendance record')
+      .max(500, 'A register can hold at most 500 students'),
+  })
+  .superRefine((data, ctx) => {
+    const seen = new Set<string>();
+    data.records.forEach((record, index) => {
+      if (seen.has(record.studentId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['records', index, 'studentId'],
+          message: 'Each student may appear only once in an attendance batch',
+        });
+      }
+      seen.add(record.studentId);
+    });
+  });
+export type BulkAttendanceInput = z.infer<typeof bulkAttendanceSchema>;
+
 export const updateAttendanceSchema = z
   .object({
     status: z.nativeEnum(AttendanceStatus).optional(),

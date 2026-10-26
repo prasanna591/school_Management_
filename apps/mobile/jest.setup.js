@@ -27,3 +27,18 @@ jest.mock('lucide-react-native', () => {
   const view = () => null;
   return new Proxy({}, { get: () => view });
 });
+
+// expo-secure-store is a native module. An in-memory implementation keeps the
+// auth tests hermetic while matching the async API the app uses.
+jest.mock('expo-secure-store', () => {
+  const store = new Map();
+  return {
+    getItemAsync: jest.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+    setItemAsync: jest.fn(async (key, value) => {
+      store.set(key, value);
+    }),
+    deleteItemAsync: jest.fn(async (key) => {
+      store.delete(key);
+    }),
+  };
+});

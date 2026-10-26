@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View, type TextStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Permission, type AttendanceIndicator, type Role } from '@smartschool/shared';
 
@@ -24,7 +23,7 @@ import { useAsync } from '../../lib/useAsync';
 import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../lib/settings';
 import { ROUTES } from '../../navigation/routes';
-import { colors, radius, shadow } from '../../theme';
+import { colors, radius } from '../../theme';
 
 type Nav = { navigate: (route: string, params?: object) => void };
 
@@ -78,14 +77,6 @@ interface FeedRow {
   unread?: boolean;
 }
 
-function titleCase(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function countLabel(key: string): string {
-  return titleCase(key.replace(/([A-Z])/g, ' $1')).replace(/\s+/g, ' ').trim();
-}
-
 function person(who?: { firstName?: string | null; lastName?: string | null } | null): string {
   if (!who) return '';
   return `${who.firstName ?? ''} ${who.lastName ?? ''}`.trim();
@@ -100,32 +91,6 @@ function attendanceStat(card: AttendanceCard): { value: string; hint: string; to
     hint: indicatorLabel(card.indicator),
     tone: indicatorTone(card.indicator),
   };
-}
-
-/** Greeting + role badge shown in the purple hero banner. */
-function WelcomeBanner({ user }: { user?: { firstName?: string; role: Role } | null }) {
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const name = user?.firstName ?? '';
-  const role = user?.role ? humanize(user.role) : 'School';
-
-  return (
-    <LinearGradient
-      colors={colors.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.banner, shadow]}
-    >
-      <Text style={styles.bannerGreeting}>
-        {greet}
-        {name ? `, ${name}` : ''}
-      </Text>
-      <View style={styles.bannerRole}>
-        <Icon name="shield" size={12} color={colors.white} />
-        <Text style={styles.bannerRoleText}>{role}</Text>
-      </View>
-    </LinearGradient>
-  );
 }
 
 export function AdminDashboardScreen() {
@@ -173,19 +138,13 @@ export function AdminDashboardScreen() {
   if (state.loading) {
     return (
       <>
-        <WelcomeBanner user={user} />
-        <SkeletonStats count={2} />
+        <SkeletonStats count={4} />
         <SkeletonPanels count={3} />
       </>
     );
   }
   if (state.error) {
-    return (
-      <>
-        <WelcomeBanner user={user} />
-        <ErrorState message={state.error} onRetry={state.reload} />
-      </>
-    );
+    return <ErrorState message={state.error} onRetry={state.reload} />;
   }
   if (!state.data) return null;
 
@@ -193,20 +152,53 @@ export function AdminDashboardScreen() {
   const attendance = attendanceStat(data.attendanceToday);
   const showFeed = canAudit || canNotifications;
 
+  const attention: { key: string; label: string; value: number | string; icon: IconName; onPress?: () => void }[] = [];
+  if (data.pipeline.pendingRequests > 0) {
+    attention.push({
+      key: 'requests',
+      label: 'Pending requests',
+      value: data.pipeline.pendingRequests,
+      icon: 'requests',
+      onPress: role && can(role, Permission.REQUEST_READ)
+        ? () => go(ROUTES.admin.resource, { key: 'service-requests' })
+        : undefined,
+    });
+  }
+  if (data.pipeline.openAdmissions > 0) {
+    attention.push({
+      key: 'admissions',
+      label: 'Open admissions',
+      value: data.pipeline.openAdmissions,
+      icon: 'admissions',
+      onPress: role && can(role, Permission.ADMISSION_READ)
+        ? () => go(ROUTES.admin.resource, { key: 'admissions' })
+        : undefined,
+    });
+  }
+  if (data.finance.totalOutstanding > 0) {
+    attention.push({
+      key: 'fees',
+      label: 'Fees outstanding',
+      value: formatCurrency(data.finance.totalOutstanding, currency),
+      icon: 'finance',
+      onPress: role && can(role, Permission.INVOICE_READ)
+        ? () => go(ROUTES.admin.resource, { key: 'invoices' })
+        : undefined,
+    });
+  }
+
   return (
     <>
-      <WelcomeBanner user={user} />
-
       <StatGrid>
         <StatCard
-          label="Total students"
+          label="Students"
           value={formatStatValue(data.counts.students)}
           hint="Enrolled"
           icon="students"
           onPress={role && can(role, Permission.STUDENT_READ) ? () => go(ROUTES.admin.students) : undefined}
         />
         <StatCard
-          label="Total teachers"
+          label="Teachers"
           value={formatStatValue(data.counts.teachers)}
           hint="On staff"
           icon="teacher"
@@ -216,48 +208,91 @@ export function AdminDashboardScreen() {
               : undefined
           }
         />
+        <StatCard
+          label="Attendance today"
+          value={attendance.value}
+          hint={attendance.hint}
+          icon="calendar-check"
+          tone={attendance.tone}
+          onPress={
+            role && can(role, Permission.ATTENDANCE_READ)
+              ? () => go(ROUTES.admin.resource, { key: 'attendances' })
+              : undefined
+          }
+        />
+        <StatCard
+          label="Fees outstanding"
+          value={formatCurrency(data.finance.totalOutstanding, currency)}
+          hint={`${formatCurrency(data.finance.collectedThisMonth, currency)} this month`}
+          icon="receipt"
+          tone={data.finance.totalOutstanding > 0 ? 'danger' : 'success'}
+          onPress={
+            role && can(role, Permission.INVOICE_READ)
+              ? () => go(ROUTES.admin.resource, { key: 'invoices' })
+              : undefined
+          }
+        />
       </StatGrid>
 
-      <Panel title="Attendance today">
-        <View style={styles.attendanceRow}>
-          <View style={styles.attendanceValue}>
-            <Icon name="calendar-check" size={20} color={colors.primary} />
-            <Text style={styles.attendanceNumber}>{attendance.value}</Text>
-            <Text style={styles.attendanceHint}>{attendance.hint}</Text>
-          </View>
-          {role && can(role, Permission.ATTENDANCE_READ) ? (
+      <Panel title="Needs attention">
+        {attention.length === 0 ? (
+          <Text style={styles.muted}>Nothing needs attention right now.</Text>
+        ) : (
+          attention.map((item) => (
             <Pressable
-              style={styles.viewDetails}
-              onPress={() => go(ROUTES.admin.resource, { key: 'attendances' })}
+              key={item.key}
+              onPress={item.onPress}
+              disabled={!item.onPress}
               accessibilityRole="button"
-              accessibilityLabel="View attendance details"
+              accessibilityLabel={item.label}
+              style={({ pressed }) => [styles.attentionRow, pressed ? styles.rowPressed : null]}
             >
-              <Text style={styles.viewDetailsText}>View Details</Text>
-              <Icon name="chevron-right" size={14} color={colors.primary} />
+              <View style={styles.quickIcon}>
+                <Icon name={item.icon} size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.attentionLabel} numberOfLines={1}>
+                {item.label}
+              </Text>
+              <Text style={styles.attentionValue}>{item.value}</Text>
+              {item.onPress ? (
+                <Icon name="chevron-right" size={16} color={colors.textMuted} />
+              ) : null}
             </Pressable>
-          ) : null}
-        </View>
+          ))
+        )}
       </Panel>
 
-      <Panel title="Finance overview">
+      <QuickActions role={role} onSelect={go} />
+
+      <Panel
+        title="Finance"
+        action={
+          role && can(role, Permission.INVOICE_READ) ? (
+            <Pressable
+              style={styles.linkButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="View invoices"
+              onPress={() => go(ROUTES.admin.resource, { key: 'invoices' })}
+            >
+              <Text style={styles.linkText}>Invoices</Text>
+              <Icon name="chevron-right" size={14} color={colors.primary} />
+            </Pressable>
+          ) : undefined
+        }
+      >
         <View style={styles.kvList}>
           <KeyValue
-            label="Collected"
-            value={formatCurrency(data.finance.totalCollected, currency)}
+            label="Collected this month"
+            value={formatCurrency(data.finance.collectedThisMonth, currency)}
             valueStyle={styles.kvSuccess}
-            icon="finance"
+            icon="trending"
           />
           <KeyValue
             label="Pending fees"
             value={formatCurrency(data.finance.totalOutstanding, currency)}
             valueStyle={styles.kvDanger}
             icon="receipt"
-          />
-          <KeyValue label="Billed" value={formatCurrency(data.finance.totalBilled, currency)} icon="receipt" />
-          <KeyValue
-            label="Collected this month"
-            value={formatCurrency(data.finance.collectedThisMonth, currency)}
-            icon="trending"
           />
         </View>
       </Panel>
@@ -278,7 +313,7 @@ export function AdminDashboardScreen() {
                     : go(ROUTES.admin.tabs, { screen: ROUTES.admin.notifications })
                 }
               >
-                <Text style={styles.linkText}>View All</Text>
+                <Text style={styles.linkText}>View all</Text>
                 <Icon name="chevron-right" size={14} color={colors.primary} />
               </Pressable>
             ) : undefined
@@ -318,40 +353,6 @@ export function AdminDashboardScreen() {
           )}
         </Panel>
       ) : null}
-
-      <AttendancePanel title="Attendance overall" card={data.attendanceOverall} />
-
-      <Panel title="Admissions & requests">
-        <StatGrid>
-          <StatCard
-            label="Admissions"
-            value={formatStatValue(data.pipeline.openAdmissions)}
-            hint="Open pipeline"
-            icon="admissions"
-            onPress={
-              role && can(role, Permission.ADMISSION_READ)
-                ? () => go(ROUTES.admin.resource, { key: 'admissions' })
-                : undefined
-            }
-          />
-          <StatCard
-            label="Requests"
-            value={formatStatValue(data.pipeline.pendingRequests)}
-            hint="Awaiting action"
-            icon="requests"
-            tone={data.pipeline.pendingRequests > 0 ? 'warning' : 'primary'}
-            onPress={
-              role && can(role, Permission.REQUEST_READ)
-                ? () => go(ROUTES.admin.resource, { key: 'service-requests' })
-                : undefined
-            }
-          />
-        </StatGrid>
-      </Panel>
-
-      <QuickActions role={role} onSelect={go} />
-
-      <MoreCounts counts={data.counts} />
     </>
   );
 }
@@ -410,7 +411,7 @@ function QuickActions({
 
   return (
     <Panel title="Quick actions">
-      <StatGrid>
+      <View style={styles.quickGrid}>
         {actions.map((action) => (
           <Pressable
             key={action.key}
@@ -426,57 +427,6 @@ function QuickActions({
               {action.label}
             </Text>
           </Pressable>
-        ))}
-      </StatGrid>
-    </Panel>
-  );
-}
-
-function AttendancePanel({ title, card }: { title: string; card: AttendanceCard }) {
-  const statuses = Object.entries(card.byStatus).filter(([, value]) => value > 0);
-  return (
-    <Panel title={title}>
-      {card.total > 0 ? (
-        <>
-          <StatGrid>
-            <StatCard label="Total marks" value={formatStatValue(card.total)} icon="attendance" />
-            <StatCard
-              label="Attendance rate"
-              value={`${card.percentage}%`}
-              hint={indicatorLabel(card.indicator)}
-              tone={indicatorTone(card.indicator)}
-            />
-          </StatGrid>
-          {statuses.length > 0 ? (
-            <View style={styles.chipRow}>
-              {statuses.map(([key, value]) => (
-                <View key={key} style={styles.chip}>
-                  <Text style={styles.chipLabel}>{humanize(key)}</Text>
-                  <Text style={styles.chipValue}>{formatStatValue(value)}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-        </>
-      ) : (
-        <Text style={styles.muted}>No attendance recorded yet.</Text>
-      )}
-    </Panel>
-  );
-}
-
-function MoreCounts({ counts }: { counts: Record<string, number> }) {
-  const headline = new Set(['students', 'teachers', 'classes']);
-  const entries = Object.entries(counts).filter(([key]) => !headline.has(key));
-  if (entries.length === 0) return null;
-  return (
-    <Panel title="More counts">
-      <View style={styles.chipRow}>
-        {entries.map(([key, value]) => (
-          <View key={key} style={styles.chip}>
-            <Text style={styles.chipLabel}>{countLabel(key)}</Text>
-            <Text style={styles.chipValue}>{formatStatValue(value)}</Text>
-          </View>
         ))}
       </View>
     </Panel>
@@ -519,7 +469,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <View style={[styles.panel, shadow]}>
+    <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <Text style={styles.panelTitle}>{title}</Text>
         {action}
@@ -530,86 +480,51 @@ function Panel({
 }
 
 const styles = {
-  banner: {
-    borderRadius: radius.xl,
-    padding: 18,
-    gap: 8,
-    minHeight: 104,
-    justifyContent: 'center',
+  attentionRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 4,
+    borderRadius: radius.sm,
   },
-  bannerGreeting: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.white,
+  rowPressed: {
+    backgroundColor: colors.primaryLight,
   },
-  bannerRole: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
+  attentionLabel: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.text,
   },
-  bannerRoleText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '700',
+  attentionValue: {
+    fontSize: 14,
+    fontWeight: '800' as const,
+    color: colors.primary,
   },
   panel: {
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: 16,
-    gap: 10,
+    padding: 18,
+    gap: 14,
   },
   panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
     gap: 8,
   },
   panelTitle: {
     flexShrink: 1,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.text,
   },
   panelBody: {
     gap: 8,
-  },
-  attendanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  attendanceValue: {
-    flexShrink: 1,
-    gap: 2,
-  },
-  attendanceNumber: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  attendanceHint: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  viewDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minHeight: 44,
-    paddingHorizontal: 4,
-  },
-  viewDetailsText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
   },
   linkButton: {
     flexDirection: 'row',
@@ -693,32 +608,38 @@ const styles = {
   kvDanger: {
     color: colors.danger,
   },
+  quickGrid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+  },
   quickButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    minHeight: 52,
+    flexGrow: 1,
+    flexBasis: '22%',
+    alignItems: 'center' as const,
+    gap: 8,
+    minHeight: 78,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 14,
   },
   quickButtonPressed: {
     backgroundColor: colors.primaryLight,
   },
   quickIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
   quickLabel: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '700' as const,
     color: colors.text,
+    textAlign: 'center' as const,
   },
   chipRow: {
     flexDirection: 'row',

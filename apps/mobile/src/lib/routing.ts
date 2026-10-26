@@ -2,6 +2,7 @@ import { getPermissionsForRole, Permission, type Role } from '@smartschool/share
 
 export type RouteName =
   | 'tabs'
+  | 'account'
   | 'admin-dashboard'
   | 'academics'
   | 'student-details'
@@ -18,12 +19,17 @@ export type RouteName =
   | 'teacher-homework'
   | 'teacher-timetable'
   | 'teacher-profile'
+  | 'teacher-messages'
   | 'parent-portal'
+  | 'parent-attendance'
   | 'parent-timetable'
   | 'parent-results'
   | 'parent-invoices'
   | 'parent-homework'
   | 'parent-vehicle'
+  | 'parent-syllabus'
+  | 'parent-teachers'
+  | 'parent-notices'
   | 'notifications'
   | 'messages'
   | 'settings'
@@ -53,7 +59,15 @@ export const LOGIN_ROUTES = {
  */
 export const TAB_ROUTE_NAMES = [
   'admin-dashboard',
+  'teacher-portal',
+  'parent-portal',
   'academics',
+  'teacher-classes',
+  'teacher-attendance',
+  'parent-attendance',
+  'parent-homework',
+  'teacher-messages',
+  'parent-invoices',
   'notifications',
   'profile',
 ] as const;
@@ -78,13 +92,12 @@ export function defaultRouteForRole(role: Role): RouteName {
 }
 
 /**
- * The drawer's initial route. When the role's preferred landing screen lives
- * inside the bottom tabs we open the tab host instead, so the role still sees
- * its dashboard (`admin-dashboard`) with the bottom navigation visible.
+ * The drawer's initial route. Every role now has a home inside the bottom-tab
+ * host, so the app always opens on `tabs` and the tab navigator picks the
+ * role's landing screen.
  */
-export function drawerInitialRouteForRole(role: Role): RouteName {
-  const target = defaultRouteForRole(role);
-  return isTabRoute(target) ? 'tabs' : target;
+export function drawerInitialRouteForRole(_role: Role): RouteName {
+  return 'tabs';
 }
 
 function can(role: Role, permission: Permission): boolean {

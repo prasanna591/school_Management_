@@ -4,6 +4,7 @@
   AttendanceSummary,
   AttendanceSummaryQuery,
   AttendanceSummaryStudent,
+  BulkAttendanceInput,
   CreateAttendanceInput,
   ListAttendancesQuery,
   UpdateAttendanceInput,
@@ -24,6 +25,7 @@ import { prisma } from '../../lib/prisma';
 import { emitToSchool } from '../../lib/realtime';
 import { paginate, toSkipTake } from '../../utils/pagination';
 import { notifyUsers } from '../notifications/notifications.service';
+import { assertOwnStudentId, resolveStudentSelf } from '../students/student-scope';
 import {
   assertClassLevelInScope,
   assertSectionInScope,
@@ -54,13 +56,55 @@ function fullName(user: { firstName?: string | null; lastName?: string | null } 
   return `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
 }
 
+interface AttendanceEventRow {
+  id: string;
+  studentId: string;
+  sectionId: string;
+  status: string;
+  date: Date;
+}
+
+/** Broadcast the live update and notify the student/guardians when relevant. */
+async function announceAttendance(row: AttendanceEventRow, schoolId: string): Promise<void> {
+  emitToSchool(schoolId, SOCKET_EVENTS.ATTENDANCE_MARKED, {
+    id: row.id,
+    studentId: row.studentId,
+    sectionId: row.sectionId,
+    status: row.status,
+    date: row.date,
+  });
+  if (row.status !== 'ABSENT' && row.status !== 'LATE') return;
+
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: row.studentId },
+    include: {
+      guardians: { include: { guardian: { select: { userId: true } } } },
+    },
+  });
+  const recipients = [
+    profile?.userId ?? null,
+    ...(profile?.guardians ?? []).map((g) => g.guardian.userId ?? null),
+  ].filter((id): id is string => Boolean(id));
+  await notifyUsers(recipients, {
+    schoolId,
+    type: 'ATTENDANCE',
+    title: `Attendance marked ${row.status.toLowerCase()}`,
+    body: `Your child was marked ${row.status.toLowerCase()} on ${row.date
+      .toISOString()
+      .slice(0, 10)}.`,
+    data: { attendanceId: row.id, studentId: row.studentId, status: row.status },
+  });
+}
+
 export const attendancesService = {
   /**
    * Attendance tracker: daily status breakdown plus a monthly/term percentage
    * per student, with the visual indicator band (good/warning/critical).
    */
   async summary(query: AttendanceSummaryQuery, actor: Actor): Promise<AttendanceSummary> {
-    if (!query.studentId && !query.sectionId && !query.classLevelId) {
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, query.studentId);
+    if (!selfId && !query.studentId && !query.sectionId && !query.classLevelId) {
       throw ApiError.badRequest('Select a class, section or student to view attendance');
     }
 
@@ -129,7 +173,8 @@ export const attendancesService = {
     if (Object.keys(sectionScope).length > 0) where.section = sectionScope;
     if (query.sectionId) where.sectionId = query.sectionId;
     else if (teacherScope) where.sectionId = { in: teacherScope.sectionIds };
-    if (query.studentId) where.studentId = query.studentId;
+    if (selfId) where.studentId = selfId;
+    else if (query.studentId) where.studentId = query.studentId;
 
     const records = await prisma.attendance.findMany({
       where,
@@ -151,7 +196,8 @@ export const attendancesService = {
 
     const studentWhere: Prisma.StudentProfileWhereInput = {};
     if (schoolId) studentWhere.schoolId = schoolId;
-    if (query.studentId) studentWhere.id = query.studentId;
+    if (selfId) studentWhere.id = selfId;
+    else if (query.studentId) studentWhere.id = query.studentId;
     if (query.sectionId) studentWhere.sectionId = query.sectionId;
     else if (query.classLevelId) studentWhere.section = { classLevelId: query.classLevelId };
     // Teachers additionally never see students outside their own sections.
@@ -196,7 +242,7 @@ export const attendancesService = {
     return {
       period,
       scope: {
-        studentId: query.studentId,
+        studentId: selfId ?? query.studentId,
         sectionId: query.sectionId,
         classLevelId: query.classLevelId,
       },
@@ -212,6 +258,8 @@ export const attendancesService = {
     const { skip, take } = toSkipTake(query.page, query.limit);
     const where: Prisma.AttendanceWhereInput = {};
     const schoolId = resolveSchoolScope(actor);
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, query.studentId);
     if (schoolId) {
       where.section = { classLevel: { schoolId } } as any;
     }
@@ -237,7 +285,8 @@ export const attendancesService = {
         where.sectionId = { in: teacherScope.sectionIds };
       }
     } else if (query.sectionId) where.sectionId = query.sectionId;
-    if (query.studentId) where.studentId = query.studentId;
+    if (selfId) where.studentId = selfId;
+    else if (query.studentId) where.studentId = query.studentId;
     if (query.date) where.date = query.date;
     const items = await prisma.attendance.findMany({
       where,
@@ -258,6 +307,8 @@ export const attendancesService = {
     const scope = resolveSchoolScope(actor);
     if (scope && att.section.classLevel.schoolId !== scope)
       throw ApiError.forbidden('Access denied');
+    const selfId = await resolveStudentSelf(actor);
+    if (selfId) assertOwnStudentId(selfId, att.studentId);
     const teacherScope = await resolveTeacherScope(actor);
     if (teacherScope) assertSectionInScope(teacherScope, att.sectionId);
     return att;
@@ -304,33 +355,100 @@ export const attendancesService = {
         recordedById: teacherScope ? actor.id : input.takenById || actor.id,
       },
     });
-    emitToSchool(schoolId, SOCKET_EVENTS.ATTENDANCE_MARKED, {
-      id: att.id,
-      studentId: att.studentId,
-      sectionId: att.sectionId,
-      status: att.status,
-      date: att.date,
-    });
-    if (att.status === 'ABSENT' || att.status === 'LATE') {
-      const profile = await prisma.studentProfile.findUnique({
-        where: { id: att.studentId },
-        include: {
-          guardians: { include: { guardian: { select: { userId: true } } } },
-        },
-      });
-      const recipients = [
-        profile?.userId ?? null,
-        ...(profile?.guardians ?? []).map((g) => g.guardian.userId ?? null),
-      ].filter((id): id is string => Boolean(id));
-      await notifyUsers(recipients, {
-        schoolId,
-        type: 'ATTENDANCE',
-        title: `Attendance marked ${att.status.toLowerCase()}`,
-        body: `Your child was marked ${att.status.toLowerCase()} on ${att.date.toISOString().slice(0, 10)}.`,
-        data: { attendanceId: att.id, studentId: att.studentId, status: att.status },
-      });
-    }
+    await announceAttendance(att, schoolId);
     return att;
+  },
+  /**
+   * Save a whole class register in one transaction.
+   *
+   * The unique key is `studentId + date`, so each row is an upsert. That makes
+   * the call idempotent: a retry after a lost response updates the same rows
+   * instead of failing on a unique constraint. All students are validated
+   * against the actor's school/section scope before anything is written.
+   */
+  async createBulk(input: BulkAttendanceInput, actor: Actor) {
+    const schoolId = resolveSchoolScope(actor, input.schoolId) ?? actor.schoolId ?? undefined;
+    if (!schoolId) throw ApiError.badRequest('School is required');
+
+    const section = await prisma.section.findUnique({
+      where: { id: input.sectionId },
+      include: { classLevel: true },
+    });
+    if (!section || section.classLevel.schoolId !== schoolId) {
+      throw ApiError.badRequest('Invalid section');
+    }
+    const teacherScope = await resolveTeacherScope(actor);
+    if (teacherScope) assertSectionInScope(teacherScope, input.sectionId);
+
+    const studentIds = input.records.map((record) => record.studentId);
+    const students = await prisma.studentProfile.findMany({
+      where: { id: { in: studentIds }, schoolId },
+      select: { id: true, sectionId: true },
+    });
+    const byId = new Map(students.map((student) => [student.id, student]));
+    const unknown = studentIds.filter((id) => !byId.has(id));
+    if (unknown.length > 0) {
+      throw ApiError.badRequest(`Unknown student(s): ${unknown.join(', ')}`);
+    }
+    for (const record of input.records) {
+      const student = byId.get(record.studentId)!;
+      if (teacherScope) {
+        assertStudentInScope(teacherScope, student);
+        if (student.sectionId !== input.sectionId) {
+          throw ApiError.badRequest('Student is not in the selected section');
+        }
+      }
+    }
+
+    const activeYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isCurrent: true },
+    });
+    const academicYearId =
+      activeYear?.id ?? (await prisma.academicYear.findFirst({ where: { schoolId } }))?.id;
+    if (!academicYearId) throw ApiError.badRequest('Academic year required');
+
+    const recordedById = teacherScope ? actor.id : input.takenById || actor.id;
+    const previous = await prisma.attendance.findMany({
+      where: { studentId: { in: studentIds }, date: input.date },
+      select: { studentId: true, status: true },
+    });
+    const priorStatus = new Map(previous.map((row) => [row.studentId, row.status]));
+
+    const records = await prisma.$transaction(
+      input.records.map((record) =>
+        prisma.attendance.upsert({
+          where: { studentId_date: { studentId: record.studentId, date: input.date } },
+          create: {
+            studentId: record.studentId,
+            sectionId: input.sectionId,
+            academicYearId,
+            date: input.date,
+            status: record.status,
+            remarks: record.remark,
+            recordedById,
+          },
+          update: {
+            status: record.status,
+            ...(record.remark !== undefined ? { remarks: record.remark } : {}),
+            recordedById,
+          },
+        }),
+      ),
+    );
+
+    // Only broadcast actual transitions so a re-save (for example a retry)
+    // does not spam parents with duplicate notifications.
+    for (const record of records) {
+      if (priorStatus.get(record.studentId) === record.status) continue;
+      await announceAttendance(record, schoolId);
+    }
+
+    return {
+      sectionId: input.sectionId,
+      date: input.date,
+      saved: records.length,
+      records,
+    };
   },
   async update(id: string, input: UpdateAttendanceInput, actor: Actor) {
     const existing = await prisma.attendance.findUnique({
@@ -352,30 +470,7 @@ export const attendancesService = {
     });
     // Emit update and notify on status change
     const schoolId = existing.section.classLevel.schoolId;
-    emitToSchool(schoolId, SOCKET_EVENTS.ATTENDANCE_MARKED, {
-      id: att.id,
-      studentId: att.studentId,
-      sectionId: att.sectionId,
-      status: att.status,
-      date: att.date,
-    });
-    if (att.status === 'ABSENT' || att.status === 'LATE') {
-      const profile = await prisma.studentProfile.findUnique({
-        where: { id: att.studentId },
-        include: { guardians: { include: { guardian: { select: { userId: true } } } } },
-      });
-      const recipients = [
-        profile?.userId ?? null,
-        ...(profile?.guardians ?? []).map((g) => g.guardian.userId ?? null),
-      ].filter((id): id is string => Boolean(id));
-      await notifyUsers(recipients, {
-        schoolId,
-        type: 'ATTENDANCE',
-        title: `Attendance marked ${att.status.toLowerCase()}`,
-        body: `Your child was marked ${att.status.toLowerCase()} on ${att.date.toISOString().slice(0, 10)}.`,
-        data: { attendanceId: att.id, studentId: att.studentId, status: att.status },
-      });
-    }
+    await announceAttendance(att, schoolId);
     return att;
   },
   async remove(id: string, actor: Actor) {

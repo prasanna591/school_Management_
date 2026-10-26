@@ -3453,7 +3453,7 @@ body.modal-open {
 }
 
 /* --------------------------------------------------------------------------
-   25. University dashboard (role-aware home)
+   25. School dashboard (role-aware home)
    -------------------------------------------------------------------------- */
 .udash {
   --udash-navy-900: #070c1c;
@@ -5333,7 +5333,7 @@ body.modal-open {
   filter: saturate(1.2) brightness(1.04);
 }
 
-/* --- University dashboard depth ------------------------------------------ */
+/* --- School dashboard depth ------------------------------------------ */
 .udash::before {
   content: '';
   position: absolute;

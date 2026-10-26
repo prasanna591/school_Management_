@@ -1,13 +1,32 @@
 import type { ApiFailure, ApiSuccess, Role } from '@smartschool/shared';
 
+import { getStoredRefreshToken, setStoredRefreshToken } from './tokenStore';
+
 /**
  * Base URL of the SmartSchool REST API.
  *
- * In the web app this comes from Vite's `VITE_API_BASE` variable. Expo exposes
- * environment variables with the `EXPO_PUBLIC_` prefix, read through
- * `process.env`, so the mobile app uses `EXPO_PUBLIC_API_BASE` instead.
+ * A native app is not a browser: a relative URL resolves against the Metro
+ * bundle origin, not the API, so `EXPO_PUBLIC_API_BASE` must be an absolute
+ * `http(s)://host[:port]/path`. When it is missing or relative, the app shows
+ * a configuration screen instead of failing every request with a confusing
+ * network error.
  */
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? '/api/v1';
+function resolveApiBase(raw: string | undefined): string {
+  const value = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!value) return '';
+  if (!/^https?:\/\/[^/\s]+/i.test(value)) return '';
+  return value;
+}
+
+export const API_BASE = resolveApiBase(process.env.EXPO_PUBLIC_API_BASE);
+export const isApiBaseConfigured = API_BASE.length > 0;
+
+/**
+ * Header telling the API this is a native client. Native clients receive the
+ * refresh token in the JSON body because they have no cookie jar; browsers
+ * keep the httpOnly cookie flow.
+ */
+export const NATIVE_CLIENT_HEADERS: Record<string, string> = { 'X-Client-Platform': 'mobile' };
 
 /**
  * How long the startup session restore may block before we give up and show the
@@ -48,6 +67,14 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+function apiBaseError(): ApiError {
+  return new ApiError(
+    'The server address is not configured. Set EXPO_PUBLIC_API_BASE to the full API URL (for example http://192.168.1.10:4000/api/v1) and restart the app.',
+    0,
+    'API_BASE_MISSING',
+  );
 }
 
 let accessToken: string | null = null;
@@ -130,16 +157,25 @@ function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
+        const refreshToken = await getStoredRefreshToken();
+        if (!refreshToken) return null;
         const res = await fetchWithTimeout(`${API_BASE}/auth/refresh`, {
           method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}',
+          headers: { 'Content-Type': 'application/json', ...NATIVE_CLIENT_HEADERS },
+          body: JSON.stringify({ refreshToken }),
         });
-        if (!res.ok) return null;
-        const body = (await res.json()) as ApiSuccess<{ accessToken: string }>;
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) await setStoredRefreshToken(null);
+          return null;
+        }
+        const body = (await res.json()) as ApiSuccess<{
+          accessToken: string;
+          refreshToken?: string;
+        }>;
         if (body.success && body.data?.accessToken) {
           accessToken = body.data.accessToken;
+          // The server rotates the refresh token on every use; keep the new one.
+          if (body.data.refreshToken) await setStoredRefreshToken(body.data.refreshToken);
           return accessToken;
         }
         return null;
@@ -169,6 +205,7 @@ async function send(
   init: RequestInit = {},
   retry = true,
 ): Promise<ApiSuccess<unknown> | ApiFailure> {
+  if (!isApiBaseConfigured) throw apiBaseError();
   const headers = new Headers(init.headers);
   if (init.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -180,7 +217,6 @@ async function send(
     res = await fetchWithTimeout(`${API_BASE}${path}`, {
       ...init,
       headers,
-      credentials: 'include',
     });
   } catch (error) {
     // Timeout / offline: surface a readable error instead of hanging forever.
@@ -269,19 +305,26 @@ export async function loginRequest(
   password: string,
   portal: LoginPortal = 'admin',
 ): Promise<SessionUser> {
-  const data = await apiRequest<{ user: SessionUser; accessToken: string }>(
-    LOGIN_ENDPOINTS[portal],
-    {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    },
-  );
+  const data = await apiRequest<{
+    user: SessionUser;
+    accessToken: string;
+    refreshToken?: string;
+  }>(LOGIN_ENDPOINTS[portal], {
+    method: 'POST',
+    headers: { ...NATIVE_CLIENT_HEADERS },
+    body: JSON.stringify({ email, password }),
+  });
   setAccessToken(data.accessToken);
+  await setStoredRefreshToken(data.refreshToken ?? null);
   return data.user;
 }
 
 export async function restoreSession(): Promise<SessionUser | null> {
+  if (!isApiBaseConfigured) return null;
   try {
+    const refreshToken = await getStoredRefreshToken();
+    if (!refreshToken) return null;
+
     // Bound the startup request: on a device that cannot reach the API the
     // fetch would otherwise block the app on the loading screen for a long
     // time. A short timeout lets the Welcome/Login screen appear promptly.
@@ -291,18 +334,25 @@ export async function restoreSession(): Promise<SessionUser | null> {
     try {
       res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
+        headers: { 'Content-Type': 'application/json', ...NATIVE_CLIENT_HEADERS },
+        body: JSON.stringify({ refreshToken }),
         signal: controller.signal,
       });
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) return null;
-    const body = (await res.json()) as ApiSuccess<{ user: SessionUser; accessToken: string }>;
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) await setStoredRefreshToken(null);
+      return null;
+    }
+    const body = (await res.json()) as ApiSuccess<{
+      user: SessionUser;
+      accessToken: string;
+      refreshToken?: string;
+    }>;
     if (body.success && body.data?.accessToken) {
       setAccessToken(body.data.accessToken);
+      if (body.data.refreshToken) await setStoredRefreshToken(body.data.refreshToken);
       return body.data.user;
     }
     return null;
@@ -313,10 +363,16 @@ export async function restoreSession(): Promise<SessionUser | null> {
 
 export async function logoutRequest(): Promise<void> {
   try {
-    await apiRequest('/auth/logout', { method: 'POST' });
+    const refreshToken = await getStoredRefreshToken();
+    await apiRequest('/auth/logout', {
+      method: 'POST',
+      headers: { ...NATIVE_CLIENT_HEADERS },
+      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+    });
   } catch {
     // ignore network errors on logout
   } finally {
     setAccessToken(null);
+    await setStoredRefreshToken(null);
   }
 }

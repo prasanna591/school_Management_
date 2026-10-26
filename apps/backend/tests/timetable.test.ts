@@ -147,11 +147,11 @@ describe('timetableService.import', () => {
     expect(result).toMatchObject({ created: 0, updated: 1, total: 1 });
   });
 
-  it('imports pasted SQL INSERT statements', async () => {
-    const sql =
-      "INSERT INTO timetable (class, section, subject, teacher, day, start, end, room) VALUES ('Grade 1','A','MATH','E100','Mon','9:00','10:00','101');";
+  it('imports pasted CSV text', async () => {
+    const csv =
+      'Class,Section,Subject,Teacher,Day,Start,End,Room\nGrade 1,A,MATH,E100,Mon,9:00,10:00,101';
 
-    await timetableService.import({ mode: 'upsert', content: sql }, admin);
+    await timetableService.import({ mode: 'upsert', content: csv }, admin);
 
     expect(entry.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

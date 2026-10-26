@@ -7,13 +7,13 @@ import { NotificationBell } from './NotificationBell';
 import { Toaster } from './Toaster';
 import { useAuth } from '../lib/auth';
 import { initials } from '../lib/format';
-import { colors, shadow } from '../theme';
+import { colors, radius } from '../theme';
 
 /**
- * The shell every authenticated screen renders inside: a compact header with
- * the drawer menu, the SmartSchool brand and school name, the notifications bell
- * and the signed-in user's avatar, a scrollable content area, and the toaster.
- * Navigation itself lives in the drawer navigator.
+ * The shell every authenticated screen renders inside. The top bar stays quiet:
+ * navigation on the left, notifications and account on the right. Screen titles
+ * live in the content, so the chrome never repeats information the user already
+ * knows (brand, school, page name).
  *
  * The header carries the top safe-area inset and the scroll content the bottom
  * one, because the status bar is drawn edge-to-edge: without it the header would
@@ -28,9 +28,9 @@ export function Layout({
   bottomInset = true,
 }: {
   children: React.ReactNode;
-  /** Primary header line. Defaults to the SmartSchool brand name. */
+  /** Optional contextual title. Most screens keep their own in-content title. */
   heading?: string;
-  /** Optional second header line (e.g. the school name). */
+  /** Optional second line shown beside the contextual title. */
   subheading?: string;
   /**
    * Whether to add the bottom safe-area inset to the content. Set to `false`
@@ -42,28 +42,29 @@ export function Layout({
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const bottom = bottomInset ? insets.bottom : 0;
+  const canGoBack = navigation.canGoBack();
 
   const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
   const avatar = initials(user?.firstName, user?.lastName);
 
   return (
     <View style={styles.shell}>
-      <View style={[styles.header, shadow, { paddingTop: insets.top + 6 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-          accessibilityLabel="Open menu"
+          style={styles.navButton}
+          onPress={() =>
+            canGoBack ? navigation.goBack() : navigation.dispatch(DrawerActions.toggleDrawer())
+          }
+          accessibilityLabel={canGoBack ? 'Go back' : 'Open menu'}
           hitSlop={8}
         >
-          <Icon name="menu" size={20} />
+          <Icon name={canGoBack ? 'chevron-left' : 'menu'} size={20} />
         </Pressable>
-        <View style={styles.brand}>
-          <View style={styles.logoMark}>
-            <Icon name="shield" size={18} color={colors.white} />
-          </View>
+
+        {heading ? (
           <View style={styles.headerText}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {heading ?? 'SmartSchool'}
+              {heading}
             </Text>
             {subheading ? (
               <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -71,7 +72,10 @@ export function Layout({
               </Text>
             ) : null}
           </View>
-        </View>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+
         <NotificationBell />
         <Pressable
           style={styles.avatarButton}
@@ -88,6 +92,7 @@ export function Layout({
         <ScrollView
           contentContainerStyle={[styles.contentInner, { paddingBottom: bottom + 32 }]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {children}
         </ScrollView>
@@ -105,43 +110,32 @@ const styles = {
   header: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 8,
-    paddingHorizontal: 12,
+    gap: 10,
+    paddingHorizontal: 16,
     // The top padding is extended with the status-bar inset in the component.
     paddingTop: 6,
     paddingBottom: 6,
+    backgroundColor: colors.background,
+  },
+  navButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  menuButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    borderRadius: 22,
-  },
-  brand: {
+  headerSpacer: {
     flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 10,
-    minWidth: 0,
-  },
-  logoMark: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
   },
   headerText: {
     flex: 1,
     minWidth: 0,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700' as const,
     color: colors.text,
   },
@@ -154,9 +148,9 @@ const styles = {
     paddingHorizontal: 2,
   },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primaryLight,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -172,9 +166,10 @@ const styles = {
     flex: 1,
   },
   contentInner: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     // Extended with the bottom safe-area inset in the component.
     paddingBottom: 32,
-    gap: 12,
+    gap: 16,
   },
 } as const;

@@ -40,6 +40,21 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+
+  // Relax request throttling for instructor-led demos, where many devices
+  // legitimately share one NAT address. Never enable this in production.
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
+  // Only enable when the app actually sits behind a reverse proxy. Trusting a
+  // proxy unconditionally lets a direct client spoof X-Forwarded-For and dodge
+  // IP-based limits.
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

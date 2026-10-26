@@ -1,6 +1,7 @@
 ﻿import {
   Permission,
   attendanceSummaryQuerySchema,
+  bulkAttendanceSchema,
   createAttendanceSchema,
   idSchema,
   listAttendancesQuerySchema,
@@ -34,6 +35,12 @@ attendancesRouter.get(
   requirePermission(Permission.ATTENDANCE_READ),
   validate(idParamSchema, 'params'),
   asyncHandler(attendancesController.getById),
+);
+attendancesRouter.post(
+  '/bulk',
+  requirePermission(Permission.ATTENDANCE_MARK),
+  validate(bulkAttendanceSchema),
+  asyncHandler(attendancesController.createBulk),
 );
 attendancesRouter.post(
   '/',

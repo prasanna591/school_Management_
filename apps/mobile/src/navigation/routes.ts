@@ -6,6 +6,8 @@
  * and which roles may open them.
  */
 export const ROUTES = {
+  /** Shared account page for roles without a dedicated profile tab. */
+  account: 'account',
   public: {
     welcome: 'welcome',
     home: 'public-home',
@@ -76,6 +78,7 @@ export const ROUTES = {
 } as const;
 
 export type Route =
+  | typeof ROUTES.account
   | (typeof ROUTES.public)[keyof (typeof ROUTES.public)]
   | (typeof ROUTES.admin)[keyof (typeof ROUTES.admin)]
   | (typeof ROUTES.teacher)[keyof (typeof ROUTES.teacher)]

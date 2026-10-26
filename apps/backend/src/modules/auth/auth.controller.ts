@@ -8,6 +8,20 @@ import { authService, type RequestMeta } from './auth.service';
 const REFRESH_COOKIE = 'smartschool_refresh';
 const REFRESH_COOKIE_MAX_AGE = parseDuration(env.JWT_REFRESH_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000);
 
+/**
+ * Header a native client sends to receive the refresh token in the JSON body.
+ *
+ * React Native has no cookie jar, so the httpOnly cookie never survives on a
+ * device. Requests that identify as native get the token in the body instead;
+ * browsers keep the cookie-only flow so an XSS in the web app still cannot
+ * read the refresh token.
+ */
+const NATIVE_CLIENT_HEADER = 'x-client-platform';
+
+function wantsRefreshTokenInBody(req: Request): boolean {
+  return String(req.headers[NATIVE_CLIENT_HEADER] ?? '').toLowerCase() === 'mobile';
+}
+
 function requestMeta(req: Request): RequestMeta {
   return {
     userAgent: req.headers['user-agent'],
@@ -40,7 +54,11 @@ async function loginWithRoles(req: Request, res: Response, allowedRoles?: readon
   setRefreshCookie(res, result.tokens.refreshToken);
   res.status(200).json({
     success: true,
-    data: { user: result.user, accessToken: result.tokens.accessToken },
+    data: {
+      user: result.user,
+      accessToken: result.tokens.accessToken,
+      ...(wantsRefreshTokenInBody(req) ? { refreshToken: result.tokens.refreshToken } : {}),
+    },
   });
 }
 
@@ -82,7 +100,11 @@ export const authController = {
     setRefreshCookie(res, result.tokens.refreshToken);
     res.status(200).json({
       success: true,
-      data: { user: result.user, accessToken: result.tokens.accessToken },
+      data: {
+        user: result.user,
+        accessToken: result.tokens.accessToken,
+        ...(wantsRefreshTokenInBody(req) ? { refreshToken: result.tokens.refreshToken } : {}),
+      },
     });
   },
 

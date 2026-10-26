@@ -52,13 +52,13 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'teacher-portal',
     label: 'My Dashboard',
-    route: ROUTES.teacher.portal,
+    ...tab(ROUTES.teacher.portal),
     roles: [Role.TEACHER],
   },
   {
     key: 'parent-portal',
     label: 'My Children',
-    route: ROUTES.parent.portal,
+    ...tab(ROUTES.parent.portal),
     roles: [Role.PARENT],
   },
   {
@@ -229,7 +229,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'teacher-classes',
     label: 'My Classes',
-    route: ROUTES.teacher.classes,
+    ...tab(ROUTES.teacher.classes),
     roles: [Role.TEACHER],
   },
   {
@@ -242,7 +242,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'teacher-attendance',
     label: 'Attendance',
-    route: ROUTES.teacher.attendance,
+    ...tab(ROUTES.teacher.attendance),
     roles: [Role.TEACHER],
     permission: Permission.ATTENDANCE_READ,
   },
@@ -276,7 +276,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'teacher-messages',
     label: 'Messages',
-    route: ROUTES.teacher.messages,
+    ...tab(ROUTES.teacher.messages),
     roles: [Role.TEACHER],
     permission: Permission.MESSAGE_READ,
   },
@@ -300,13 +300,13 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'parent-attendance',
     label: 'Attendance',
-    route: ROUTES.parent.attendance,
+    ...tab(ROUTES.parent.attendance),
     roles: [Role.PARENT],
   },
   {
     key: 'parent-homework',
     label: 'Homework',
-    route: ROUTES.parent.homework,
+    ...tab(ROUTES.parent.homework),
     roles: [Role.PARENT],
   },
   {
@@ -330,7 +330,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'parent-invoices',
     label: 'Fees & invoices',
-    route: ROUTES.parent.invoices,
+    ...tab(ROUTES.parent.invoices),
     roles: [Role.PARENT],
   },
   {
@@ -349,6 +349,12 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'parent-vehicle',
     label: 'Transport',
     route: ROUTES.parent.vehicle,
+    roles: [Role.PARENT],
+  },
+  {
+    key: 'account',
+    label: 'My account',
+    route: ROUTES.account,
     roles: [Role.PARENT],
   },
 ];
@@ -417,6 +423,7 @@ export const NAV_ICONS: Record<string, IconName> = {
   notifications: 'bell',
   messages: 'messages',
   profile: 'user',
+  account: 'user',
   settings: 'settings',
   reports: 'reports',
 };
@@ -496,7 +503,7 @@ const NAV_SECTIONS: { title: string | null; keys: string[] }[] = [
   },
   {
     title: 'Account',
-    keys: ['teacher-profile', 'notifications', 'profile', 'settings'],
+    keys: ['teacher-profile', 'notifications', 'profile', 'account', 'settings'],
   },
 ];
 
@@ -504,7 +511,20 @@ const NAV_SECTIONS: { title: string | null; keys: string[] }[] = [
  * Entries that are also primary bottom tabs. They stay out of the drawer so the
  * menu never duplicates a tab the user already has one tap away.
  */
-const PRIMARY_TAB_KEYS = new Set<string>(['academics']);
+const PRIMARY_TAB_KEYS = new Set<string>([
+  'dashboard',
+  'teacher-portal',
+  'parent-portal',
+  'academics',
+  'teacher-classes',
+  'teacher-attendance',
+  'teacher-messages',
+  'parent-attendance',
+  'parent-homework',
+  'parent-invoices',
+  'notifications',
+  'profile',
+]);
 
 export interface NavGroup {
   title: string | null;

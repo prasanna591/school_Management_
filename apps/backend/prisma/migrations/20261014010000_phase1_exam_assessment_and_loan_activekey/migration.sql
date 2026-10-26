@@ -1,9 +1,9 @@
 -- Phase 1: exam assessment fields + library active-loan guard
 -- AlterTable
-ALTER TABLE `bookloan` ADD COLUMN `activeKey` VARCHAR(191) NULL;
+ALTER TABLE `BookLoan` ADD COLUMN `activeKey` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `exam` ADD COLUMN `maxMarks` INTEGER NOT NULL DEFAULT 100,
+ALTER TABLE `Exam` ADD COLUMN `maxMarks` INTEGER NOT NULL DEFAULT 100,
     ADD COLUMN `passingMarks` INTEGER NOT NULL DEFAULT 0;
 
 -- CreateIndex

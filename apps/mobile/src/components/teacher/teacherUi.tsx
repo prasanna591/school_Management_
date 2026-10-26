@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Icon, type IconName } from '../Icon';
 import { EmptyState } from '../ui';
-import { colors, radius, shadow, shadowStrong, teacherGradient } from '../../theme';
+import { colors, radius, shadowStrong, teacherGradient } from '../../theme';
 
 /**
  * The shared building blocks for the Teacher portal screens.
@@ -121,7 +121,6 @@ export function SectionTitle({ children }: { children: ReactNode }) {
  * a highlighted "attendance today" tile.
  */
 export function TeacherHero({
-  eyebrow,
   title,
   subtitle,
   actions,
@@ -129,7 +128,6 @@ export function TeacherHero({
   statValue,
   statHint,
 }: {
-  eyebrow?: string;
   title: string;
   subtitle?: string;
   actions?: ReactNode;
@@ -144,35 +142,36 @@ export function TeacherHero({
       end={{ x: 1, y: 1 }}
       style={styles.hero}
     >
-      <View style={styles.heroText}>
-        {eyebrow ? (
-          <View style={styles.heroEyebrow}>
-            <Icon name="sparkles" size={12} color={colors.onNavyMuted} />
-            <Text style={styles.heroEyebrowLabel} numberOfLines={1}>
-              {eyebrow}
-            </Text>
-          </View>
-        ) : null}
-        <Text style={styles.heroTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
-        {actions ? <View style={styles.heroActions}>{actions}</View> : null}
-      </View>
-
-      {statLabel ? (
-        <View style={styles.heroStat}>
-          <Text style={styles.heroStatLabel} numberOfLines={1}>
-            {statLabel}
+      <View style={styles.heroIdentity}>
+        <View style={styles.heroText}>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {title}
           </Text>
-          <Text style={styles.heroStatValue} numberOfLines={1}>
-            {statValue ?? '—'}
-          </Text>
-          {statHint ? (
-            <Text style={styles.heroStatHint} numberOfLines={2}>
-              {statHint}
+          {subtitle ? (
+            <Text style={styles.heroSubtitle} numberOfLines={1}>
+              {subtitle}
             </Text>
           ) : null}
         </View>
-      ) : null}
+
+        {statLabel ? (
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeValue} numberOfLines={1}>
+              {statValue ?? '—'}
+            </Text>
+            <Text style={styles.heroBadgeLabel} numberOfLines={1}>
+              {statLabel}
+            </Text>
+            {statHint ? (
+              <Text style={styles.heroBadgeHint} numberOfLines={1}>
+                {statHint}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {actions ? <View style={styles.heroActions}>{actions}</View> : null}
     </LinearGradient>
   );
 }
@@ -362,9 +361,8 @@ const styles = {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: 16,
-    gap: 12,
-    ...shadow,
+    padding: 18,
+    gap: 14,
   },
   notice: {
     flexDirection: 'row' as const,
@@ -394,8 +392,8 @@ const styles = {
     minWidth: 0,
   },
   panelIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: radius.sm,
     backgroundColor: colors.primarySoft,
     alignItems: 'center' as const,
@@ -407,7 +405,7 @@ const styles = {
     gap: 2,
   },
   panelTitle: {
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: '700' as const,
     color: colors.text,
   },
@@ -427,63 +425,59 @@ const styles = {
   hero: {
     borderRadius: radius.xl,
     padding: 18,
-    gap: 16,
+    gap: 14,
     ...shadowStrong,
   },
-  heroText: {
-    gap: 6,
-  },
-  heroEyebrow: {
+  heroIdentity: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 6,
+    gap: 12,
   },
-  heroEyebrowLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: colors.onNavyMuted,
-    flexShrink: 1,
+  heroText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
   heroTitle: {
-    fontSize: 23,
-    lineHeight: 29,
+    fontSize: 21,
+    lineHeight: 26,
     fontWeight: '800' as const,
+    letterSpacing: -0.3,
     color: colors.onNavy,
   },
   heroSubtitle: {
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.onNavyMuted,
   },
   heroActions: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
     gap: 8,
-    marginTop: 6,
   },
-  heroStat: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  heroBadge: {
+    alignItems: 'flex-end' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    padding: 14,
-    gap: 4,
-    alignSelf: 'stretch' as const,
+    borderColor: 'rgba(255,255,255,0.2)',
+    maxWidth: 120,
   },
-  heroStatLabel: {
-    fontSize: 11.5,
-    fontWeight: '700' as const,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-    color: colors.onNavyMuted,
-  },
-  heroStatValue: {
-    fontSize: 30,
+  heroBadgeValue: {
+    fontSize: 19,
     fontWeight: '800' as const,
     color: colors.white,
   },
-  heroStatHint: {
-    fontSize: 12.5,
+  heroBadgeLabel: {
+    fontSize: 10.5,
+    fontWeight: '600' as const,
+    color: colors.onNavyMuted,
+  },
+  heroBadgeHint: {
+    fontSize: 9.5,
     color: colors.onNavyMuted,
   },
 
@@ -523,24 +517,21 @@ const styles = {
   actionGrid: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: 10,
+    gap: 8,
   },
   actionCard: {
     flexGrow: 1,
-    flexBasis: '46%',
-    flexDirection: 'row' as const,
+    flexBasis: '30%',
     alignItems: 'center' as const,
-    gap: 10,
-    padding: 12,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    minHeight: 64,
+    backgroundColor: colors.surfaceMuted,
+    minHeight: 78,
   },
   actionCardPressed: {
     backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryLight,
   },
   actionIcon: {
     width: 34,
@@ -551,18 +542,20 @@ const styles = {
     justifyContent: 'center' as const,
   },
   actionBody: {
-    flex: 1,
-    minWidth: 0,
+    alignItems: 'center' as const,
     gap: 2,
+    width: '100%',
   },
   actionLabel: {
-    fontSize: 13.5,
+    fontSize: 12,
     fontWeight: '700' as const,
     color: colors.text,
+    textAlign: 'center' as const,
   },
   actionDesc: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: colors.textMuted,
+    textAlign: 'center' as const,
   },
 
   button: {

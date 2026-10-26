@@ -1,55 +1,53 @@
 /**
  * The SmartSchool mobile design tokens.
  *
- * The palette follows the reference design: a light lavender canvas, a purple
- * gradient for hero/banner surfaces, white rounded cards with soft purple
- * shadows, and a small set of semantic colors for status. Spacing/radius tokens
- * keep the layouts consistent across every screen.
+ * Refined premium palette: soft neutral canvas with deep violet accent,
+ * crisp surfaces, tighter shadows. Designed to feel more considered and
+ * less template-like.
  */
 
 export const colors = {
   /** App canvas behind the cards. */
-  background: '#f4f2fb',
+  background: '#f7f6fa',
   /** Card / sheet surface. */
   surface: '#ffffff',
   /** Slightly tinted surface for chips, inputs and inert buttons. */
-  surfaceMuted: '#f6f4fd',
+  surfaceMuted: '#f8f7fc',
 
-  primary: '#6d28d9',
+  primary: '#5b21b6',
   primaryDark: '#4c1d95',
-  primaryLight: '#ede9fe',
-  primarySoft: '#f5f3ff',
+  primaryLight: '#f3f0ff',
+  primarySoft: '#f7f5ff',
 
-  /** Purple gradient used by the welcome banner and hero surfaces. */
-  gradient: ['#7c3aed', '#5b21b6'] as const,
+  /** Refined gradient for hero/banner surfaces. */
+  gradient: ['#6d28d9', '#312e81'] as const,
 
-  text: '#1e293b',
-  textMuted: '#64748b',
+  text: '#0f172a',
+  textMuted: '#475569',
   textFaint: '#94a3b8',
 
-  border: '#ece9f6',
-  borderStrong: '#ded9f0',
+  border: '#e7e5f3',
+  borderStrong: '#d7d3ee',
 
-  success: '#15803d',
-  successSoft: '#dcfce7',
-  warning: '#b45309',
-  warningSoft: '#fef3c7',
-  danger: '#b91c1c',
-  dangerSoft: '#fee2e2',
-  info: '#6d28d9',
-  infoSoft: '#ede9fe',
+  success: '#166534',
+  successSoft: '#f0fdf4',
+  warning: '#92400e',
+  warningSoft: '#fffbeb',
+  danger: '#991b1b',
+  dangerSoft: '#fef2f2',
+  info: '#5b21b6',
+  infoSoft: '#f7f5ff',
 
   /**
-   * Deep navy used by the Teacher portal, mirroring the navy/blue/cyan/violet
-   * palette the web Teacher Dashboard applies through `data-theme="navy"`.
+   * Deep navy used by the Teacher portal.
    */
-  navy: '#0b1b3a',
-  navyDeep: '#061027',
-  navySurface: '#12264d',
-  navyBorder: '#1e3a6b',
+  navy: '#0a1029',
+  navyDeep: '#050b1a',
+  navySurface: '#101a36',
+  navyBorder: '#1a2647',
   /** Text colours that sit on the navy hero. */
   onNavy: '#f8fafc',
-  onNavyMuted: '#a9bce0',
+  onNavyMuted: '#c7d2fe',
 
   white: '#ffffff',
 } as const;
@@ -102,30 +100,32 @@ export const spacing = {
   md: 12,
   lg: 16,
   xl: 24,
+  '2xl': 32,
+  '3xl': 40,
 } as const;
 
 export const radius = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 28,
   pill: 999,
 } as const;
 
-/** Soft purple card shadow (iOS shadow* + Android elevation). */
+/** Soft card shadow (iOS shadow* + Android elevation). */
 export const shadow = {
-  shadowColor: '#4c1d95',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-  elevation: 3,
+  shadowColor: '#1e1b4b',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.06,
+  shadowRadius: 16,
+  elevation: 2,
 } as const;
 
 /** A slightly stronger shadow for floating/hero elements. */
 export const shadowStrong = {
-  shadowColor: '#4c1d95',
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.16,
-  shadowRadius: 18,
-  elevation: 6,
+  shadowColor: '#1e1b4b',
+  shadowOffset: { width: 0, height: 16 },
+  shadowOpacity: 0.1,
+  shadowRadius: 24,
+  elevation: 4,
 } as const;

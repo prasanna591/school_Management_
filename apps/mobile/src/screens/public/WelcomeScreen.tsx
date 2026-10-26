@@ -26,7 +26,7 @@ import { StatusBarTone } from '../../components/StatusBarTone';
 import { ROUTES } from '../../navigation/routes';
 
 /** Headline shown word-by-word; split here so each word can fade in. */
-const HEADLINE_WORDS = ['The', 'all-in-one', 'school', 'platform'];
+const HEADLINE_WORDS = ['Smarter', 'school', 'management', 'unified'];
 
 /* --------------------------------------------------------------------------
    Custom logo — an "S" monogram under a graduation cap, warm orange/amber.
@@ -121,10 +121,6 @@ export function WelcomeScreen() {
   // pointing at the administrator is the designed flow.)
   const registerGuardRef = useRef(false);
   const onRegister = useCallback(() => {
-    // TEMP DEBUG ([SS-DEBUG] logs are safe to delete after device verification).
-    console.log('[SS-DEBUG] WelcomeScreen: Register pressed', {
-      guardActive: registerGuardRef.current,
-    });
     if (registerGuardRef.current) return;
     registerGuardRef.current = true;
     Alert.alert(
@@ -325,7 +321,7 @@ export function WelcomeScreen() {
             accessibilityRole="link"
             testID="welcome-explore"
           >
-            <Text style={styles.siteLinkText}>Explore SmartSchool</Text>
+            <Text style={styles.siteLinkText}>Explore Features</Text>
           </Pressable>
         </View>
       </ScrollView>

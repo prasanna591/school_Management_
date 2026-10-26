@@ -1,6 +1,8 @@
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
+import { isApiBaseConfigured } from '../lib/api';
+import { ConfigErrorScreen } from '../screens/ConfigErrorScreen';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
 
@@ -11,6 +13,9 @@ import { MainNavigator } from './MainNavigator';
  */
 export function RootNavigator() {
   const { user, loading } = useAuth();
+  if (!isApiBaseConfigured) {
+    return <ConfigErrorScreen rawValue={process.env.EXPO_PUBLIC_API_BASE} />;
+  }
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

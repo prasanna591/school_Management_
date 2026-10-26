@@ -26,6 +26,7 @@
     "db:migrate": "npm run prisma:migrate -w @smartschool/backend",
     "db:deploy": "npm run prisma:deploy -w @smartschool/backend",
     "db:seed": "npm run prisma:seed -w @smartschool/backend",
+    "db:seed:demo": "npm run prisma:seed:demo -w @smartschool/backend",
     "db:studio": "npm run prisma:studio -w @smartschool/backend",
     "db:up": "docker compose up -d mysql",
     "db:down": "docker compose down",

@@ -28,6 +28,10 @@ export const attendancesController = {
     const r = await attendancesService.create(req.body, actorFrom(req));
     res.status(201).json({ success: true, data: r });
   },
+  async createBulk(req: Request, res: Response) {
+    const r = await attendancesService.createBulk(req.body, actorFrom(req));
+    res.status(201).json({ success: true, data: r });
+  },
   async update(req: Request, res: Response) {
     const r = await attendancesService.update(req.params.id as string, req.body, actorFrom(req));
     res.status(200).json({ success: true, data: r });

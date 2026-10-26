@@ -38,5 +38,17 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  {
+    files: ['**/jest.setup.js', '**/__tests__/**', '**/*.test.*', '**/*.spec.*'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   prettier,
 );

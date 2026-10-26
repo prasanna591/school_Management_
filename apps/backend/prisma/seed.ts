@@ -1,6 +1,15 @@
 import { randomBytes } from 'node:crypto';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'node:path';
 import { PrismaClient, Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+for (const candidate of [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../../.env'),
+]) {
+  loadEnv({ path: candidate });
+}
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);

@@ -16,31 +16,54 @@ import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AcademicsScreen } from '../screens/admin/AcademicsScreen';
 import { NotificationsScreen } from '../screens/admin/AdminNotificationsScreen';
 import { ProfileScreen } from '../screens/admin/AdminProfileScreen';
+import { TeacherPortalScreen } from '../screens/teacher/TeacherPortalScreen';
+import { TeacherClassesScreen } from '../screens/teacher/TeacherClassesScreen';
+import { TeacherAttendanceScreen } from '../screens/teacher/TeacherAttendanceScreen';
+import { TeacherMessagesScreen } from '../screens/teacher/TeacherMessagesScreen';
+import { ParentHomeAwesome } from '../screens/parent/ParentHomeAwesome';
+import { ParentAttendanceScreen } from '../screens/parent/ParentAttendanceScreen';
+import { ParentInvoicesScreen } from '../screens/parent/ParentInvoicesScreen';
+import { ParentHomeworkScreen } from '../screens/parent/ParentHomeworkScreen';
 
 const Tab = createBottomTabNavigator();
 
-/** The four primary destinations. Everything else lives in the drawer. */
+/** The role's primary destinations. Everything else lives in the drawer. */
 const TABS: {
   name: TabRouteName;
   component: ComponentType;
   label: string;
   icon: IconName;
   permission?: Permission;
-  /** Roles that never see this tab (teachers get their own portal instead). */
+  /** Roles that never see this tab. */
   excludeRoles?: readonly Role[];
   /** Highlights the Notifications tab with the live unread counter. */
   badge?: boolean;
   /** Only shown when the role can open at least one academic module. */
   academic?: boolean;
+  /** Only shown for specific roles. */
+  roles?: readonly Role[];
 }[] = [
   {
     name: 'admin-dashboard',
     component: AdminDashboardScreen,
-    label: 'Dashboard',
-    icon: 'dashboard',
+    label: 'Home',
+    icon: 'home',
     permission: Permission.REPORT_READ,
-    // The web dashboard is excluded for teachers, who have `/teacher` instead.
-    excludeRoles: [Role.TEACHER],
+    excludeRoles: [Role.TEACHER, Role.PARENT],
+  },
+  {
+    name: 'teacher-portal',
+    component: TeacherPortalScreen,
+    label: 'Home',
+    icon: 'home',
+    roles: [Role.TEACHER],
+  },
+  {
+    name: 'parent-portal',
+    component: ParentHomeAwesome,
+    label: 'Home',
+    icon: 'home',
+    roles: [Role.PARENT],
   },
   {
     name: 'academics',
@@ -48,11 +71,56 @@ const TABS: {
     label: 'Academics',
     icon: 'subject',
     academic: true,
+    excludeRoles: [Role.PARENT],
+  },
+  {
+    name: 'teacher-classes',
+    component: TeacherClassesScreen,
+    label: 'Classes',
+    icon: 'class',
+    roles: [Role.TEACHER],
+  },
+  {
+    name: 'teacher-attendance',
+    component: TeacherAttendanceScreen,
+    label: 'Attendance',
+    icon: 'attendance',
+    roles: [Role.TEACHER],
+    permission: Permission.ATTENDANCE_READ,
+  },
+  {
+    name: 'parent-attendance',
+    component: ParentAttendanceScreen,
+    label: 'Attendance',
+    icon: 'attendance',
+    roles: [Role.PARENT],
+  },
+  {
+    name: 'parent-homework',
+    component: ParentHomeworkScreen,
+    label: 'Homework',
+    icon: 'homework',
+    roles: [Role.PARENT],
+  },
+  {
+    name: 'teacher-messages',
+    component: TeacherMessagesScreen,
+    label: 'Messages',
+    icon: 'messages',
+    roles: [Role.TEACHER],
+    permission: Permission.MESSAGE_READ,
+  },
+  {
+    name: 'parent-invoices',
+    component: ParentInvoicesScreen,
+    label: 'Fees',
+    icon: 'finance',
+    roles: [Role.PARENT],
   },
   {
     name: 'notifications',
     component: NotificationsScreen,
-    label: 'Notifications',
+    label: 'Alerts',
     icon: 'bell',
     permission: Permission.NOTIFICATION_READ,
     badge: true,
@@ -62,6 +130,7 @@ const TABS: {
     component: ProfileScreen,
     label: 'Profile',
     icon: 'user',
+    excludeRoles: [Role.PARENT],
   },
 ];
 
@@ -117,7 +186,7 @@ export function MainTabs() {
         // the bottom inset has to be added by hand — otherwise the tab labels
         // end up underneath Android's navigation bar.
         tabBarStyle: {
-          height: 58 + insets.bottom,
+          height: 62 + insets.bottom,
           paddingTop: 6,
           paddingBottom: 6 + insets.bottom,
           borderTopWidth: 1,
@@ -125,8 +194,8 @@ export function MainTabs() {
           backgroundColor: colors.surface,
         },
         tabBarLabelStyle: {
-          fontSize: 11.5,
-          fontWeight: '600',
+          fontSize: 11,
+          fontWeight: '700',
         },
       }}
     >

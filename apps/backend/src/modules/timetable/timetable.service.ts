@@ -10,7 +10,6 @@ import {
   normalizeTimeValue,
   normalizeWeekday,
   parseTimetableCsv,
-  parseTimetableSql,
   timetableImportRowSchema,
 } from '@smartschool/shared';
 import type { Prisma, Weekday } from '@prisma/client';
@@ -127,14 +126,12 @@ interface ResolvedEntry {
   materials: string | null;
 }
 
-/** Read the rows to import from either parsed rows or pasted CSV/SQL text. */
+/** Read the rows to import from either parsed rows or pasted CSV text. */
 function collectRows(input: ImportTimetableInput): ParsedImportRows {
   if (input.rows && input.rows.length > 0) {
     return { headers: [], rows: input.rows.map(canonicalizeImportRow), issues: [] };
   }
-  const content = input.content ?? '';
-  const format = input.format ?? (/insert\s+into/i.test(content) ? 'sql' : 'csv');
-  return format === 'sql' ? parseTimetableSql(content) : parseTimetableCsv(content);
+  return parseTimetableCsv(input.content ?? '');
 }
 
 export const timetableService = {
@@ -260,7 +257,7 @@ export const timetableService = {
   },
 
   /**
-   * Import a whole timetable from an Excel/CSV export or pasted SQL INSERTs.
+   * Import a whole timetable from an Excel/CSV export or pasted delimited text.
    * Rows are validated and resolved (class/section, subject, teacher) inside the
    * actor's school before anything is written, so an invalid file changes
    * nothing. `upsert` merges by section/day/start time; `replace` clears the

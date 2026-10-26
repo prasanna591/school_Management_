@@ -7,7 +7,6 @@ import {
   colors,
   parentColors,
   parentGradient,
-  parentShadow,
   parentShadowStrong,
   radius,
 } from '../../theme';
@@ -104,25 +103,16 @@ export function ParentPanel({
  * line, action chips and a highlighted figure (usually attendance).
  */
 export function ParentHero({
-  eyebrow,
   title,
   subtitle,
-  actions,
-  statLabel,
-  statValue,
-  statHint,
   avatarUrl,
   avatarFallback,
   onEditPhoto,
   editingPhoto,
+  badge,
 }: {
-  eyebrow?: string;
   title: string;
   subtitle?: string;
-  actions?: ReactNode;
-  statLabel?: string;
-  statValue?: string;
-  statHint?: string;
   /** The child photo data-URL, when one has been saved. */
   avatarUrl?: string | null;
   /** Initials shown in place of the photo. Setting this opts the avatar in. */
@@ -131,6 +121,8 @@ export function ParentHero({
   onEditPhoto?: () => void;
   /** While true the camera badge is replaced by a spinner. */
   editingPhoto?: boolean;
+  /** One compact figure, usually today's attendance. */
+  badge?: { label: string; value: string; tone?: ParentChipTone };
 }) {
   const showAvatar = Boolean(avatarUrl || avatarFallback);
   return (
@@ -140,70 +132,56 @@ export function ParentHero({
       end={{ x: 1, y: 1 }}
       style={styles.hero}
     >
-      <View style={styles.heroText}>
-        <View style={styles.heroIdentity}>
-          {showAvatar ? (
-            <View style={styles.heroAvatarWrap}>
-              <View style={styles.heroAvatar}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
-                ) : (
-                  <Text style={styles.heroAvatarText}>{avatarFallback}</Text>
-                )}
-              </View>
-              {onEditPhoto ? (
-                <Pressable
-                  onPress={onEditPhoto}
-                  disabled={editingPhoto}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change photo"
-                  accessibilityState={{ disabled: Boolean(editingPhoto) }}
-                  style={({ pressed }) => [
-                    styles.avatarEdit,
-                    pressed ? styles.avatarEditPressed : null,
-                  ]}
-                >
-                  {editingPhoto ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Icon name="camera" size={14} color={colors.white} />
-                  )}
-                </Pressable>
-              ) : null}
+      <View style={styles.heroIdentity}>
+        {showAvatar ? (
+          <View style={styles.heroAvatarWrap}>
+            <View style={styles.heroAvatar}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
+              ) : (
+                <Text style={styles.heroAvatarText}>{avatarFallback}</Text>
+              )}
             </View>
-          ) : null}
-
-          <View style={styles.heroIdentityBody}>
-            {eyebrow ? (
-              <View style={styles.heroEyebrow}>
-                <Icon name="sparkles" size={12} color={colors.onNavyMuted} />
-                <Text style={styles.heroEyebrowLabel} numberOfLines={1}>
-                  {eyebrow}
-                </Text>
-              </View>
+            {onEditPhoto ? (
+              <Pressable
+                onPress={onEditPhoto}
+                disabled={editingPhoto}
+                accessibilityRole="button"
+                accessibilityLabel="Change photo"
+                accessibilityState={{ disabled: Boolean(editingPhoto) }}
+                style={({ pressed }) => [
+                  styles.avatarEdit,
+                  pressed ? styles.avatarEditPressed : null,
+                ]}
+              >
+                {editingPhoto ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Icon name="camera" size={14} color={colors.white} />
+                )}
+              </Pressable>
             ) : null}
-            <Text style={styles.heroTitle}>{title}</Text>
-            {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
           </View>
-        </View>
-        {actions ? <View style={styles.heroActions}>{actions}</View> : null}
-      </View>
+        ) : null}
 
-      {statLabel ? (
-        <View style={styles.heroStat}>
-          <Text style={styles.heroStatLabel} numberOfLines={1}>
-            {statLabel}
+        <View style={styles.heroIdentityBody}>
+          <Text style={styles.heroTitle} numberOfLines={1}>
+            {title}
           </Text>
-          <Text style={styles.heroStatValue} numberOfLines={1}>
-            {statValue ?? '—'}
-          </Text>
-          {statHint ? (
-            <Text style={styles.heroStatHint} numberOfLines={2}>
-              {statHint}
+          {subtitle ? (
+            <Text style={styles.heroSubtitle} numberOfLines={1}>
+              {subtitle}
             </Text>
           ) : null}
         </View>
-      ) : null}
+
+        {badge ? (
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeValue}>{badge.value}</Text>
+            <Text style={styles.heroBadgeLabel}>{badge.label}</Text>
+          </View>
+        ) : null}
+      </View>
     </LinearGradient>
   );
 }
@@ -507,23 +485,19 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: 12,
-    padding: 14,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    ...parentShadow,
+    paddingTop: 2,
+    paddingBottom: 2,
   },
   headerHeading: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 12,
+    gap: 10,
     flex: 1,
     minWidth: 0,
   },
   headerIcon: {
-    width: 38,
-    height: 38,
+    width: 30,
+    height: 30,
     borderRadius: radius.sm,
     backgroundColor: parentColors.accentSoft,
     alignItems: 'center' as const,
@@ -534,12 +508,15 @@ const styles = {
     minWidth: 0,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800' as const,
+    letterSpacing: -0.4,
     color: colors.text,
   },
   headerSubtitle: {
-    fontSize: 13.5,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -549,9 +526,8 @@ const styles = {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: 16,
-    gap: 12,
-    ...parentShadow,
+    padding: 18,
+    gap: 14,
   },
   panelHeader: {
     flexDirection: 'row' as const,
@@ -568,8 +544,8 @@ const styles = {
     minWidth: 0,
   },
   panelIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: radius.sm,
     backgroundColor: parentColors.accentSoft,
     alignItems: 'center' as const,
@@ -581,7 +557,7 @@ const styles = {
     gap: 2,
   },
   panelTitle: {
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: '700' as const,
     color: colors.text,
   },
@@ -593,11 +569,7 @@ const styles = {
   hero: {
     borderRadius: radius.xl,
     padding: 18,
-    gap: 16,
     ...parentShadowStrong,
-  },
-  heroText: {
-    gap: 14,
   },
   heroIdentity: {
     flexDirection: 'row' as const,
@@ -608,24 +580,24 @@ const styles = {
   heroIdentityBody: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
   heroAvatarWrap: {
     position: 'relative' as const,
   },
   heroAvatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.55)',
+    borderColor: 'rgba(255,255,255,0.5)',
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     overflow: 'hidden' as const,
   },
   heroAvatarText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800' as const,
     color: colors.white,
   },
@@ -637,9 +609,9 @@ const styles = {
     position: 'absolute' as const,
     right: -2,
     bottom: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
     borderColor: colors.white,
     backgroundColor: parentColors.accent,
@@ -649,57 +621,36 @@ const styles = {
   avatarEditPressed: {
     opacity: 0.75,
   },
-  heroEyebrow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  },
-  heroEyebrowLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: colors.onNavyMuted,
-    flexShrink: 1,
-  },
   heroTitle: {
-    fontSize: 23,
-    lineHeight: 29,
+    fontSize: 21,
+    lineHeight: 26,
     fontWeight: '800' as const,
+    letterSpacing: -0.3,
     color: colors.onNavy,
   },
   heroSubtitle: {
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.onNavyMuted,
   },
-  heroActions: {
-    flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
-    gap: 8,
-    marginTop: 6,
-  },
-  heroStat: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  heroBadge: {
+    alignItems: 'flex-end' as const,
+    justifyContent: 'center' as const,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    padding: 14,
-    gap: 4,
-    alignSelf: 'stretch' as const,
   },
-  heroStatLabel: {
-    fontSize: 11.5,
-    fontWeight: '700' as const,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-    color: colors.onNavyMuted,
-  },
-  heroStatValue: {
-    fontSize: 30,
+  heroBadgeValue: {
+    fontSize: 19,
     fontWeight: '800' as const,
     color: colors.white,
   },
-  heroStatHint: {
-    fontSize: 12.5,
+  heroBadgeLabel: {
+    fontSize: 10.5,
+    fontWeight: '600' as const,
     color: colors.onNavyMuted,
   },
 
@@ -784,15 +735,11 @@ const styles = {
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: 12,
-    padding: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
+    paddingVertical: 9,
+    borderRadius: radius.sm,
   },
   rowPressed: {
     backgroundColor: parentColors.accentSoft,
-    borderColor: parentColors.accentBorder,
   },
   rowMain: {
     flex: 1,
@@ -816,24 +763,21 @@ const styles = {
   actionGrid: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: 10,
+    gap: 8,
   },
   actionCard: {
     flexGrow: 1,
-    flexBasis: '46%',
-    flexDirection: 'row' as const,
+    flexBasis: '30%',
     alignItems: 'center' as const,
-    gap: 10,
-    padding: 12,
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    minHeight: 64,
+    backgroundColor: colors.surfaceMuted,
+    minHeight: 78,
   },
   actionCardPressed: {
     backgroundColor: parentColors.accentSoft,
-    borderColor: parentColors.accentBorder,
   },
   actionIcon: {
     width: 34,
@@ -844,18 +788,20 @@ const styles = {
     justifyContent: 'center' as const,
   },
   actionBody: {
-    flex: 1,
-    minWidth: 0,
+    alignItems: 'center' as const,
     gap: 2,
+    width: '100%',
   },
   actionLabel: {
-    fontSize: 13.5,
+    fontSize: 12,
     fontWeight: '700' as const,
     color: colors.text,
+    textAlign: 'center' as const,
   },
   actionDesc: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: colors.textMuted,
+    textAlign: 'center' as const,
   },
 
   button: {
