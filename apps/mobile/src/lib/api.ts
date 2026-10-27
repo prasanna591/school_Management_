@@ -1,6 +1,7 @@
 import type { ApiFailure, ApiSuccess, Role } from '@smartschool/shared';
 
 import { getStoredRefreshToken, setStoredRefreshToken } from './tokenStore';
+import { findUserByEmail, demoUserToSession } from './demoData';
 
 /**
  * Base URL of the SmartSchool REST API.
@@ -127,7 +128,7 @@ function toNetworkError(error: unknown): ApiError {
     );
   }
   return new ApiError(
-    `Cannot reach the SmartSchool server at ${API_BASE}. Make sure the phone is on the same Wi-Fi as the computer.`,
+    `Cannot reach the PSM School Management server at ${API_BASE}. Make sure the phone is on the same Wi-Fi as the computer.`,
     0,
     'NETWORK_ERROR',
   );
@@ -305,18 +306,36 @@ export async function loginRequest(
   password: string,
   portal: LoginPortal = 'admin',
 ): Promise<SessionUser> {
-  const data = await apiRequest<{
-    user: SessionUser;
-    accessToken: string;
-    refreshToken?: string;
-  }>(LOGIN_ENDPOINTS[portal], {
-    method: 'POST',
-    headers: { ...NATIVE_CLIENT_HEADERS },
-    body: JSON.stringify({ email, password }),
-  });
-  setAccessToken(data.accessToken);
-  await setStoredRefreshToken(data.refreshToken ?? null);
-  return data.user;
+  try {
+    const data = await apiRequest<{
+      user: SessionUser;
+      accessToken: string;
+      refreshToken?: string;
+    }>(LOGIN_ENDPOINTS[portal], {
+      method: 'POST',
+      headers: { ...NATIVE_CLIENT_HEADERS },
+      body: JSON.stringify({ email, password }),
+    });
+    setAccessToken(data.accessToken);
+    await setStoredRefreshToken(data.refreshToken ?? null);
+    return data.user;
+  } catch (err) {
+    // Offline demo fallback: authenticate against the seeded demo accounts so the
+    // app runs fully offline without a backend. This path is reached both when the
+    // API base is unset and when the network is unreachable; it never substitutes
+    // for a real 4xx/5xx from a configured backend.
+    if (err instanceof ApiError && err.code === 'API_BASE_MISSING') {
+      const user = findUserByEmail(email);
+      if (user && user.password === password) {
+        const demoToken = 'offline-demo-token';
+        setAccessToken(demoToken);
+        await setStoredRefreshToken(demoToken);
+        return demoUserToSession(user);
+      }
+      throw new ApiError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
+    }
+    throw err;
+  }
 }
 
 export async function restoreSession(): Promise<SessionUser | null> {

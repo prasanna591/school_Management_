@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
 import { Pressable, Text, View, type TextStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Permission, type AttendanceIndicator, type Role } from '@smartschool/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../components/Icon';
 import {
@@ -10,11 +10,10 @@ import {
   Skeleton,
   SkeletonPanels,
   SkeletonStats,
-  StatCard,
-  StatGrid,
   formatStatValue,
   type StatTone,
 } from '../../components/ui';
+import { GlassCard, GlassStatCard, GlassButton, GlowPill } from '../../components/glass';
 import { api } from '../../lib/api';
 import { indicatorLabel, indicatorTone } from '../../lib/attendanceTracker';
 import { formatCurrency, formatDateTime, humanize } from '../../lib/format';
@@ -23,7 +22,7 @@ import { useAsync } from '../../lib/useAsync';
 import { useAuth } from '../../lib/auth';
 import { useSettings } from '../../lib/settings';
 import { ROUTES } from '../../navigation/routes';
-import { colors, radius } from '../../theme';
+import { colors, radius, shadowStrong } from '../../theme';
 
 type Nav = { navigate: (route: string, params?: object) => void };
 
@@ -131,6 +130,7 @@ export function AdminDashboardScreen() {
   }, [role, canAudit, canNotifications]);
 
   const go = (route: string, params?: object) => navigation.navigate(route, params);
+  const insets = useSafeAreaInsets();
 
   if (state.forbidden) {
     return <EmptyState message="You don't have permission to view the dashboard." icon="lock" />;
@@ -152,16 +152,23 @@ export function AdminDashboardScreen() {
   const attendance = attendanceStat(data.attendanceToday);
   const showFeed = canAudit || canNotifications;
 
-  const attention: { key: string; label: string; value: number | string; icon: IconName; onPress?: () => void }[] = [];
+  const attention: {
+    key: string;
+    label: string;
+    value: number | string;
+    icon: IconName;
+    onPress?: () => void;
+  }[] = [];
   if (data.pipeline.pendingRequests > 0) {
     attention.push({
       key: 'requests',
       label: 'Pending requests',
       value: data.pipeline.pendingRequests,
       icon: 'requests',
-      onPress: role && can(role, Permission.REQUEST_READ)
-        ? () => go(ROUTES.admin.resource, { key: 'service-requests' })
-        : undefined,
+      onPress:
+        role && can(role, Permission.REQUEST_READ)
+          ? () => go(ROUTES.admin.resource, { key: 'service-requests' })
+          : undefined,
     });
   }
   if (data.pipeline.openAdmissions > 0) {
@@ -170,9 +177,10 @@ export function AdminDashboardScreen() {
       label: 'Open admissions',
       value: data.pipeline.openAdmissions,
       icon: 'admissions',
-      onPress: role && can(role, Permission.ADMISSION_READ)
-        ? () => go(ROUTES.admin.resource, { key: 'admissions' })
-        : undefined,
+      onPress:
+        role && can(role, Permission.ADMISSION_READ)
+          ? () => go(ROUTES.admin.resource, { key: 'admissions' })
+          : undefined,
     });
   }
   if (data.finance.totalOutstanding > 0) {
@@ -181,179 +189,197 @@ export function AdminDashboardScreen() {
       label: 'Fees outstanding',
       value: formatCurrency(data.finance.totalOutstanding, currency),
       icon: 'finance',
-      onPress: role && can(role, Permission.INVOICE_READ)
-        ? () => go(ROUTES.admin.resource, { key: 'invoices' })
-        : undefined,
+      onPress:
+        role && can(role, Permission.INVOICE_READ)
+          ? () => go(ROUTES.admin.resource, { key: 'invoices' })
+          : undefined,
     });
   }
 
   return (
-    <>
-      <StatGrid>
-        <StatCard
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
+      <GlowPill color="primary" style={styles.pill}>
+        <Text style={styles.pillText}>School overview</Text>
+      </GlowPill>
+
+      <View style={styles.bentoGrid}>
+        <GlassStatCard
           label="Students"
           value={formatStatValue(data.counts.students)}
           hint="Enrolled"
           icon="students"
-          onPress={role && can(role, Permission.STUDENT_READ) ? () => go(ROUTES.admin.students) : undefined}
+          style={styles.bentoLarge}
+          onPress={
+            role && can(role, Permission.STUDENT_READ) ? () => go(ROUTES.admin.students) : undefined
+          }
         />
-        <StatCard
+        <GlassStatCard
           label="Teachers"
           value={formatStatValue(data.counts.teachers)}
           hint="On staff"
           icon="teacher"
+          style={styles.bentoSmall}
           onPress={
             role && can(role, Permission.TEACHER_MANAGE)
               ? () => go(ROUTES.admin.resource, { key: 'teachers' })
               : undefined
           }
         />
-        <StatCard
+        <GlassStatCard
           label="Attendance today"
           value={attendance.value}
           hint={attendance.hint}
           icon="calendar-check"
           tone={attendance.tone}
+          style={styles.bentoSmall}
           onPress={
             role && can(role, Permission.ATTENDANCE_READ)
               ? () => go(ROUTES.admin.resource, { key: 'attendances' })
               : undefined
           }
         />
-        <StatCard
+        <GlassStatCard
           label="Fees outstanding"
           value={formatCurrency(data.finance.totalOutstanding, currency)}
           hint={`${formatCurrency(data.finance.collectedThisMonth, currency)} this month`}
           icon="receipt"
           tone={data.finance.totalOutstanding > 0 ? 'danger' : 'success'}
+          style={styles.bentoSmall}
           onPress={
             role && can(role, Permission.INVOICE_READ)
               ? () => go(ROUTES.admin.resource, { key: 'invoices' })
               : undefined
           }
         />
-      </StatGrid>
+      </View>
 
-      <Panel title="Needs attention">
-        {attention.length === 0 ? (
-          <Text style={styles.muted}>Nothing needs attention right now.</Text>
-        ) : (
-          attention.map((item) => (
-            <Pressable
-              key={item.key}
-              onPress={item.onPress}
-              disabled={!item.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              style={({ pressed }) => [styles.attentionRow, pressed ? styles.rowPressed : null]}
-            >
-              <View style={styles.quickIcon}>
-                <Icon name={item.icon} size={16} color={colors.primary} />
-              </View>
-              <Text style={styles.attentionLabel} numberOfLines={1}>
-                {item.label}
-              </Text>
-              <Text style={styles.attentionValue}>{item.value}</Text>
-              {item.onPress ? (
-                <Icon name="chevron-right" size={16} color={colors.textMuted} />
-              ) : null}
-            </Pressable>
-          ))
-        )}
-      </Panel>
+      <GlassCard strong style={styles.panel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>Needs attention</Text>
+        </View>
+        <View style={styles.panelBody}>
+          {attention.length === 0 ? (
+            <Text style={styles.muted}>Nothing needs attention right now.</Text>
+          ) : (
+            attention.map((item) => (
+              <Pressable
+                key={item.key}
+                onPress={item.onPress}
+                disabled={!item.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                style={({ pressed }) => [styles.attentionRow, pressed ? styles.rowPressed : null]}
+              >
+                <View style={styles.quickIcon}>
+                  <Icon name={item.icon} size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.attentionLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                <Text style={styles.attentionValue}>{item.value}</Text>
+                {item.onPress ? (
+                  <Icon name="chevron-right" size={16} color={colors.textMuted} />
+                ) : null}
+              </Pressable>
+            ))
+          )}
+        </View>
+      </GlassCard>
 
       <QuickActions role={role} onSelect={go} />
 
-      <Panel
-        title="Finance"
-        action={
-          role && can(role, Permission.INVOICE_READ) ? (
-            <Pressable
-              style={styles.linkButton}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="View invoices"
+      <GlassCard strong style={styles.panel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>Finance</Text>
+          {role && can(role, Permission.INVOICE_READ) ? (
+            <GlassButton
+              label="Invoices"
+              variant="ghost"
               onPress={() => go(ROUTES.admin.resource, { key: 'invoices' })}
-            >
-              <Text style={styles.linkText}>Invoices</Text>
-              <Icon name="chevron-right" size={14} color={colors.primary} />
-            </Pressable>
-          ) : undefined
-        }
-      >
-        <View style={styles.kvList}>
-          <KeyValue
-            label="Collected this month"
-            value={formatCurrency(data.finance.collectedThisMonth, currency)}
-            valueStyle={styles.kvSuccess}
-            icon="trending"
-          />
-          <KeyValue
-            label="Pending fees"
-            value={formatCurrency(data.finance.totalOutstanding, currency)}
-            valueStyle={styles.kvDanger}
-            icon="receipt"
-          />
+              style={styles.financeButton}
+            />
+          ) : null}
         </View>
-      </Panel>
+        <View style={styles.panelBody}>
+          <View style={styles.kvList}>
+            <KeyValue
+              label="Collected this month"
+              value={formatCurrency(data.finance.collectedThisMonth, currency)}
+              valueStyle={styles.kvSuccess}
+              icon="trending"
+            />
+            <KeyValue
+              label="Pending fees"
+              value={formatCurrency(data.finance.totalOutstanding, currency)}
+              valueStyle={styles.kvDanger}
+              icon="receipt"
+            />
+          </View>
+        </View>
+      </GlassCard>
 
       {showFeed ? (
-        <Panel
-          title="Recent activity"
-          action={
-            role ? (
-              <Pressable
-                style={styles.linkButton}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="View all activity"
+        <GlassCard strong style={styles.panel}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelTitle}>Recent activity</Text>
+            {role ? (
+              <GlassButton
+                label="View all"
+                variant="ghost"
                 onPress={() =>
                   canAudit
                     ? go(ROUTES.admin.resource, { key: 'audit-logs' })
                     : go(ROUTES.admin.tabs, { screen: ROUTES.admin.notifications })
                 }
-              >
-                <Text style={styles.linkText}>View all</Text>
-                <Icon name="chevron-right" size={14} color={colors.primary} />
-              </Pressable>
-            ) : undefined
-          }
-        >
-          {feed.loading ? (
-            <>
-              <Skeleton height={38} radius={radius.md} />
-              <Skeleton height={38} radius={radius.md} />
-              <Skeleton height={38} radius={radius.md} />
-            </>
-          ) : feed.error ? (
-            <View style={styles.inlineError}>
-              <Text style={styles.muted}>{feed.error}</Text>
-              <Pressable onPress={feed.reload} hitSlop={8} style={styles.linkButton} accessibilityRole="button">
-                <Text style={styles.linkText}>Try again</Text>
-              </Pressable>
-            </View>
-          ) : (feed.data ?? []).length === 0 ? (
-            <Text style={styles.muted}>
-              {canAudit ? 'No recent activity yet.' : 'No notifications yet.'}
-            </Text>
-          ) : (
-            (feed.data ?? []).map((row) => (
-              <View key={row.id} style={styles.feedRow}>
-                <View style={styles.feedIcon}>
-                  <Icon name={row.icon} size={16} color={colors.primary} />
-                </View>
-                <View style={styles.feedText}>
-                  <Text style={row.unread ? styles.feedTitleUnread : styles.feedTitle} numberOfLines={2}>
-                    {row.title}
-                  </Text>
-                  <Text style={styles.muted}>{row.meta}</Text>
-                </View>
+                style={styles.financeButton}
+              />
+            ) : null}
+          </View>
+          <View style={styles.panelBody}>
+            {feed.loading ? (
+              <>
+                <Skeleton height={38} radius={radius.md} />
+                <Skeleton height={38} radius={radius.md} />
+                <Skeleton height={38} radius={radius.md} />
+              </>
+            ) : feed.error ? (
+              <View style={styles.inlineError}>
+                <Text style={styles.muted}>{feed.error}</Text>
+                <Pressable
+                  onPress={feed.reload}
+                  hitSlop={8}
+                  style={styles.linkButton}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.linkText}>Try again</Text>
+                </Pressable>
               </View>
-            ))
-          )}
-        </Panel>
+            ) : (feed.data ?? []).length === 0 ? (
+              <Text style={styles.muted}>
+                {canAudit ? 'No recent activity yet.' : 'No notifications yet.'}
+              </Text>
+            ) : (
+              (feed.data ?? []).map((row) => (
+                <View key={row.id} style={styles.feedRow}>
+                  <View style={styles.feedIcon}>
+                    <Icon name={row.icon} size={16} color={colors.primary} />
+                  </View>
+                  <View style={styles.feedText}>
+                    <Text
+                      style={row.unread ? styles.feedTitleUnread : styles.feedTitle}
+                      numberOfLines={2}
+                    >
+                      {row.title}
+                    </Text>
+                    <Text style={styles.muted}>{row.meta}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </GlassCard>
       ) : null}
-    </>
+    </View>
   );
 }
 
@@ -410,26 +436,34 @@ function QuickActions({
   if (actions.length === 0) return null;
 
   return (
-    <Panel title="Quick actions">
-      <View style={styles.quickGrid}>
-        {actions.map((action) => (
-          <Pressable
-            key={action.key}
-            style={({ pressed }) => [styles.quickButton, pressed ? styles.quickButtonPressed : null]}
-            onPress={() => onSelect(action.route, action.params)}
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-          >
-            <View style={styles.quickIcon}>
-              <Icon name={action.icon} size={18} color={colors.primary} />
-            </View>
-            <Text style={styles.quickLabel} numberOfLines={1}>
-              {action.label}
-            </Text>
-          </Pressable>
-        ))}
+    <GlassCard strong style={styles.panel}>
+      <View style={styles.panelHeader}>
+        <Text style={styles.panelTitle}>Quick actions</Text>
       </View>
-    </Panel>
+      <View style={styles.panelBody}>
+        <View style={styles.quickGrid}>
+          {actions.map((action) => (
+            <Pressable
+              key={action.key}
+              style={({ pressed }) => [
+                styles.quickButton,
+                pressed ? styles.quickButtonPressed : null,
+              ]}
+              onPress={() => onSelect(action.route, action.params)}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+            >
+              <View style={styles.quickIcon}>
+                <Icon name={action.icon} size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.quickLabel} numberOfLines={1}>
+                {action.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </GlassCard>
   );
 }
 
@@ -459,37 +493,31 @@ function KeyValue({
   );
 }
 
-function Panel({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.panel}>
-      <View style={styles.panelHeader}>
-        <Text style={styles.panelTitle}>{title}</Text>
-        {action}
-      </View>
-      <View style={styles.panelBody}>{children}</View>
-    </View>
-  );
-}
-
 const styles = {
+  pill: {
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  safeContainer: {
+    paddingTop: 0,
+  },
+  pillText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: colors.primary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
   attentionRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 10,
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: radius.sm,
   },
   rowPressed: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primarySoft,
   },
   attentionLabel: {
     flex: 1,
@@ -510,18 +538,21 @@ const styles = {
     backgroundColor: colors.surface,
     padding: 18,
     gap: 14,
+    ...shadowStrong,
   },
   panelHeader: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: 8,
+    marginBottom: 4,
   },
   panelTitle: {
     flexShrink: 1,
     fontSize: 16,
     fontWeight: '700' as const,
     color: colors.text,
+    letterSpacing: -0.3,
   },
   panelBody: {
     gap: 8,
@@ -549,7 +580,7 @@ const styles = {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -583,7 +614,7 @@ const styles = {
     gap: 12,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceMuted,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   kvLeft: {
     flexDirection: 'row',
@@ -620,18 +651,20 @@ const styles = {
     gap: 8,
     minHeight: 78,
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.glassSurface,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: 6,
     paddingVertical: 14,
   },
   quickButtonPressed: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primarySoft,
   },
   quickIcon: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
@@ -641,33 +674,31 @@ const styles = {
     color: colors.text,
     textAlign: 'center' as const,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  chipValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.text,
-  },
   muted: {
     fontSize: 12,
     color: colors.textFaint,
+  },
+  financeButton: {
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glassSurface,
+  },
+  bentoGrid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 12,
+  },
+  bentoLarge: {
+    flex: 1,
+    flexBasis: '100%',
+    maxWidth: '100%',
+  },
+  bentoSmall: {
+    flex: 1,
+    flexBasis: '48%',
+    maxWidth: '48%',
   },
 } as const;

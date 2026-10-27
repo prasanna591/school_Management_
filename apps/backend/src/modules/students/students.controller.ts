@@ -8,6 +8,26 @@ function actorFrom(req: Request): Actor {
 }
 
 export const studentsController = {
+  async me(req: Request, res: Response) {
+    const r = await studentsService.me(actorFrom(req));
+    res.status(200).json({ success: true, data: r });
+  },
+  async meAttendance(req: Request, res: Response) {
+    const r = await studentsService.meAttendance(actorFrom(req));
+    res.status(200).json({ success: true, data: r });
+  },
+  async meHomework(req: Request, res: Response) {
+    const r = await studentsService.meHomework(actorFrom(req));
+    res.status(200).json({ success: true, data: r });
+  },
+  async meTimetable(req: Request, res: Response) {
+    const r = await studentsService.meTimetable(actorFrom(req));
+    res.status(200).json({ success: true, data: r });
+  },
+  async meResults(req: Request, res: Response) {
+    const r = await studentsService.meResults(actorFrom(req));
+    res.status(200).json({ success: true, data: r });
+  },
   async list(req: Request, res: Response) {
     const result = await studentsService.list(
       req.query as unknown as ListStudentsQuery,

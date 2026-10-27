@@ -1,7 +1,8 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ParentChildShell } from '../../components/ParentChildShell';
-import { formatDate, humanize } from '../../lib/format';
+import { Layout } from '../../components/Layout';
+import { ParentChip, ParentEmpty, ParentPanel, ParentRow } from '../../components/parent/parentUi';
+import { DEMO_EXAM_RESULTS } from '../../lib/demoData';
 
 interface ExamResultRow {
   id: string;
@@ -20,97 +21,51 @@ function percentage(row: ExamResultRow): string {
   return `${Math.round((obtained / total) * 100)}%`;
 }
 
+function gradeTone(grade: string | null | undefined): 'default' | 'info' | 'success' | 'warning' | 'danger' {
+  if (!grade) return 'default';
+  const g = grade.toUpperCase();
+  if (g.startsWith('A') || g === 'O') return 'success';
+  if (g.startsWith('B')) return 'success';
+  if (g.startsWith('C')) return 'info';
+  if (g.startsWith('D')) return 'warning';
+  return 'danger';
+}
+
 export function ParentResultsScreen() {
-  return (
-    <ParentChildShell<ExamResultRow[]>
-      title="Academic Results"
-      subtitle="Published exam marks for your child"
-      endpoint={(studentId) => `/parents/me/children/${studentId}/results`}
-      emptyMessage="No results have been published yet."
-      isEmpty={(data) => data.length === 0}
-      render={(data) => <ResultList rows={data} />}
-    />
-  );
-}
+  const data: ExamResultRow[] = DEMO_EXAM_RESULTS.map((r) => ({
+    id: r.id,
+    marksObtained: r.marksObtained,
+    maxMarks: r.maxMarks,
+    grade: r.grade,
+    remarks: r.remarks,
+    exam: { name: 'Mathematics Unit Test 1', type: 'UNIT_TEST' },
+    subject: { name: r.subjectId === 'sub_maths' ? 'Mathematics' : 'English' },
+  }));
 
-function ResultList({ rows }: { rows: ExamResultRow[] }) {
   return (
-    <View style={styles.grid}>
-      {rows.map((row, index) => (
-        <ResultRow key={row.id ?? index} row={row} />
-      ))}
-    </View>
-  );
-}
-
-function ResultRow({ row }: { row: ExamResultRow }) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{row.subject?.name ?? 'Result'}</Text>
-        {row.grade ? <Text style={styles.grade}>{row.grade}</Text> : null}
-      </View>
-      <View style={styles.cardRow}>
-        <Text style={styles.muted}>
-          {[
-            row.exam?.name ?? '—',
-            row.exam?.type ? humanize(row.exam.type) : null,
-            formatDate(row.exam?.startDate) || null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </Text>
-      </View>
-      <View style={styles.cardRow}>
-        <Text style={styles.value}>
-          {String(row.marksObtained)} / {String(row.maxMarks)} ({percentage(row)})
-        </Text>
-      </View>
-      {row.remarks ? (
-        <View style={styles.cardRow}>
-          <Text style={styles.muted}>{row.remarks}</Text>
+    <Layout heading="Results">
+      {data.length === 0 ? (
+        <ParentEmpty message="No results have been published yet." hint="Results appear once your teacher publishes them." />
+      ) : (
+        <View style={{ gap: 10 }}>
+          {data.map((row) => (
+            <ParentPanel key={row.id} title={row.subject?.name ?? 'Result'} icon="marks">
+              <View style={{ gap: 8 }}>
+                <ParentRow
+                  title="Exam"
+                  meta={[row.exam?.name, row.exam?.type].filter(Boolean).join(' · ') || '—'}
+                />
+                <ParentRow title="Score" meta={`${row.marksObtained} / ${row.maxMarks}`} />
+                <ParentRow title="Percentage" meta={percentage(row)} />
+                {row.grade ? (
+                  <ParentRow title="Grade" meta={row.grade} aside={<ParentChip label={row.grade} tone={gradeTone(row.grade)} />} />
+                ) : null}
+                {row.remarks ? <ParentRow title="Remarks" meta={row.remarks} /> : null}
+              </View>
+            </ParentPanel>
+          ))}
         </View>
-      ) : null}
-    </View>
+      )}
+    </Layout>
   );
 }
-
-const styles = {
-  grid: {
-    gap: 12,
-  },
-  card: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    gap: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
-    flexShrink: 1,
-  },
-  grade: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1d4ed8',
-  },
-  cardRow: {},
-  value: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  muted: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-} as const;

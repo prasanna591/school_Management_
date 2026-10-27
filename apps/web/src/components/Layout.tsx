@@ -179,8 +179,8 @@ export function Layout() {
     <div className="app-shell">
       <aside className={`sidebar${navOpen ? ' sidebar--open' : ''}`}>
         <div className="brand">
-          <span className="brand__mark">SS</span>
-          <span className="brand__text">SmartSchool</span>
+          <span className="brand__mark">PSM</span>
+          <span className="brand__text">PSM School Management</span>
         </div>
 
         <nav className="nav" aria-label="Main navigation">

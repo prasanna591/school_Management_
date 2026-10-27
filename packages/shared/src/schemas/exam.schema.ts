@@ -24,6 +24,7 @@ export const updateExamSchema = z
     passingMarks: z.coerce.number().int().min(0).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
+    isPublished: z.boolean().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'At least one field must be provided' });
 export type UpdateExamInput = z.infer<typeof updateExamSchema>;

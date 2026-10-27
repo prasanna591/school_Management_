@@ -357,6 +357,46 @@ export const NAV_ITEMS: NavItem[] = [
     route: ROUTES.account,
     roles: [Role.PARENT],
   },
+  {
+    key: 'student-portal',
+    label: 'My Dashboard',
+    route: ROUTES.student.portal,
+    roles: [Role.STUDENT],
+  },
+  {
+    key: 'student-attendance',
+    label: 'Attendance',
+    route: ROUTES.student.attendance,
+    roles: [Role.STUDENT],
+    permission: Permission.ATTENDANCE_READ,
+  },
+  {
+    key: 'student-homework',
+    label: 'Homework',
+    route: ROUTES.student.homework,
+    roles: [Role.STUDENT],
+    permission: Permission.HOMEWORK_READ,
+  },
+  {
+    key: 'student-timetable',
+    label: 'Timetable',
+    route: ROUTES.student.timetable,
+    roles: [Role.STUDENT],
+    permission: Permission.TIMETABLE_READ,
+  },
+  {
+    key: 'student-results',
+    label: 'Results',
+    route: ROUTES.student.results,
+    roles: [Role.STUDENT],
+    permission: Permission.RESULT_READ,
+  },
+  {
+    key: 'student-profile',
+    label: 'My Profile',
+    route: ROUTES.student.profile,
+    roles: [Role.STUDENT],
+  },
 ];
 
 export function can(role: Role, permission: Permission): boolean {
@@ -400,6 +440,12 @@ export const NAV_ICONS: Record<string, IconName> = {
   'parent-teachers': 'teacher',
   'parent-notices': 'bell',
   'parent-vehicle': 'bus',
+  'student-portal': 'home',
+  'student-attendance': 'attendance',
+  'student-homework': 'homework',
+  'student-timetable': 'timetable',
+  'student-results': 'marks',
+  'student-profile': 'user',
   'vehicle-details': 'bus',
   'student-details': 'students',
   admissions: 'admissions',
@@ -448,7 +494,7 @@ export const ACADEMIC_MODULE_KEYS = [
 const NAV_SECTIONS: { title: string | null; keys: string[] }[] = [
   {
     title: 'Overview',
-    keys: ['dashboard', 'teacher-portal', 'parent-portal'],
+    keys: ['dashboard', 'teacher-portal', 'parent-portal', 'student-portal'],
   },
   {
     // Parent-only section. Other roles never hold these keys, so their drawers
@@ -465,6 +511,10 @@ const NAV_SECTIONS: { title: string | null; keys: string[] }[] = [
       'parent-vehicle',
       'parent-notices',
     ],
+  },
+  {
+    title: 'My School',
+    keys: ['student-attendance', 'student-homework', 'student-timetable', 'student-results', 'student-profile'],
   },
   {
     // Teacher-only. The section is skipped for every other role because none
@@ -515,6 +565,10 @@ const PRIMARY_TAB_KEYS = new Set<string>([
   'dashboard',
   'teacher-portal',
   'parent-portal',
+  'student-portal',
+  'student-homework',
+  'student-timetable',
+  'student-results',
   'academics',
   'teacher-classes',
   'teacher-attendance',

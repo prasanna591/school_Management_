@@ -80,6 +80,7 @@ unreachable API cannot leave the user on a loading screen.
 | `login-admin` | `LoginScreen portal="admin"` | Admin sign-in → `POST /auth/login/admin` |
 | `login-teacher` | `LoginScreen portal="teacher"` | Teacher sign-in → `POST /auth/login/teacher` |
 | `login-parent` | `LoginScreen portal="parent"` | Parent sign-in → `POST /auth/login/parent` |
+| `login-student` | `LoginScreen portal="student"` | Student sign-in → `POST /auth/login/student` |
 
 ### 2.2 Marketing stack (`PublicNavigator`)
 
@@ -101,6 +102,7 @@ and every page except the home screen exposes a **Sign in** action in the header
 | Tab | Route | Screen | Gate |
 |---|---|---|---|
 | Dashboard | `admin-dashboard` | `AdminDashboardScreen` | `REPORT_READ`, not `TEACHER` |
+| Dashboard | `student-portal` | `StudentHomeScreen` | `STUDENT` role |
 | Academics | `academics` | `AcademicsScreen` | shown when the role has ≥ 1 academic module |
 | Notifications | `notifications` | `AdminNotificationsScreen` | `NOTIFICATION_READ`, live unread badge |
 | Profile | `profile` | `AdminProfileScreen` | always available |
@@ -123,10 +125,11 @@ a sign-out button that confirms with an `Alert`.
 
 | Group | Items |
 |---|---|
-| **Overview** | Dashboard, My Dashboard (teacher), My Children (parent) |
+| **Overview** | Dashboard, My Dashboard (teacher), My Children (parent), My Dashboard (student) |
 | **My Child** | Attendance, Homework, Timetable, Results, Syllabus, Fees & invoices, Teachers, Transport, Announcements |
 | **Teaching** | My Classes, My Students, Attendance, Assignments, Marks & Grades, Homework, Lesson Plans, Messages, Timetable |
 | **Academics** | Student Details, Student Marks, Classes, Sections, Subjects, Attendance, Homework, Lesson Plans, Learning Content, Timetable |
+| **My School** | Attendance, Homework, Timetable, Results, My Profile (student) |
 | **School Operations** | Vehicle Details, Admissions, Messages |
 | **Account** | My Profile, Notifications, Profile, Settings |
 | **More** | Any permitted module not in the sections above |
@@ -229,6 +232,20 @@ and rows), `components/teacher/teacherForm.tsx` (teacher form controls), and
 
 All parent data comes from the scoped `/parents/me/children/:studentId/*` endpoints, so a
 parent can never read another family's data.
+
+### 3.6 Student (6)
+
+| Screen | Route | Purpose |
+|---|---|---|
+| `StudentHomeScreen` | `student-portal` | Student overview: name, class, attendance stat card and quick links |
+| `StudentAttendanceScreen` | `student-attendance` | Daily and monthly attendance history for the student |
+| `StudentHomeworkScreen` | `student-homework` | Homework assigned to the student's section, with submission status |
+| `StudentTimetableScreen` | `student-timetable` | The student's weekly timetable, grouped by day |
+| `StudentResultsScreen` | `student-results` | Published exam marks for the student |
+| `StudentProfileScreen` | `student-profile` | Student profile, admission/roll details and linked guardian |
+
+All student data comes from the scoped `/students/me/*` endpoints, so a student can never read
+another student's records. Results are shown only for published exams.
 
 ---
 

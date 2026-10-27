@@ -18,6 +18,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from './Icon';
 import { colors, radius } from '../theme';
@@ -65,15 +66,14 @@ export function PageHeader({
   actions?: ReactNode;
   icon?: IconName;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.pageHeader}>
+    <View style={[styles.pageHeader, { paddingTop: 2 + insets.top, paddingBottom: 2 }]}>
       <View style={styles.pageHeaderHeading}>
         {icon ? <Icon name={icon} size={18} color={colors.primary} /> : null}
         <View style={styles.pageHeaderText}>
           <Text style={styles.pageHeaderTitle}>{title}</Text>
-          {subtitle ? (
-            <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text>
-          ) : null}
+          {subtitle ? <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text> : null}
         </View>
       </View>
       {actions ? <View style={styles.pageHeaderActions}>{actions}</View> : null}
@@ -141,11 +141,7 @@ export function StatCard({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={label}
-        style={({ pressed }) => [
-          styles.statCard,
-          style,
-          pressed ? styles.statCardPressed : null,
-        ]}
+        style={({ pressed }) => [styles.statCard, style, pressed ? styles.statCardPressed : null]}
       >
         {content}
       </Pressable>
@@ -155,13 +151,7 @@ export function StatCard({
   return <View style={[styles.statCard, style]}>{content}</View>;
 }
 
-export function StatGrid({
-  children,
-  gap = 12,
-}: {
-  children: ReactNode;
-  gap?: number;
-}) {
+export function StatGrid({ children, gap = 12 }: { children: ReactNode; gap?: number }) {
   return (
     <View style={[styles.statGrid, { gap }]}>
       {Children.toArray(children).map((child, index) => (
@@ -200,14 +190,9 @@ function parseNumeric(value: number | string): { target: number; suffix: string 
   return { target: parsed, suffix: match[2] ?? '' };
 }
 
-export function CountUp({
-  value,
-  duration = 900,
-}: {
-  value: ReactNode;
-  duration?: number;
-}) {
-  const parsed = typeof value === 'number' || typeof value === 'string' ? parseNumeric(value) : null;
+export function CountUp({ value, duration = 900 }: { value: ReactNode; duration?: number }) {
+  const parsed =
+    typeof value === 'number' || typeof value === 'string' ? parseNumeric(value) : null;
   const target = parsed?.target ?? null;
   const suffix = parsed?.suffix ?? '';
 

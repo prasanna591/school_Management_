@@ -1,15 +1,16 @@
-# SmartSchool — Complete Documentation
+# PSM School Management — Complete Documentation
 
-**SmartSchool** is a multi-tenant School Management System covering the full lifecycle of a
-school: admissions, academic structure, teaching delivery, assessment, attendance, finance,
-transport, library, communication and analytics.
+**PSM School Management** is a multi-tenant School Management System for Matriculation / CBSE
+private schools (targeting Tamil Nadu, India). It covers the full lifecycle of a school:
+admissions, academic structure, teaching delivery, assessment, attendance, finance, transport,
+library, communication and analytics.
 
 It ships as **three applications** sharing one API and one database.
 
 | Surface | Stack | Location | Purpose |
 |---|---|---|---|
-| **Web** | React 18 + Vite + TypeScript + React Router | `apps/web` | Full-featured admin/staff console + marketing site |
-| **Mobile** | React Native 0.76 + Expo 52 + React Navigation | `apps/mobile` | Android/iOS app for admins, teachers and parents |
+| **Web dashboard** | React 18 + Vite + TypeScript + React Router | `apps/web` | Principal / admin console + public marketing site |
+| **Mobile app** | React Native 0.76 + Expo 52 + React Navigation | `apps/mobile` | Android/iOS app — teacher, parent and student role-based experiences |
 | **Backend** | Express 4 + Prisma 6 + Socket.IO + Zod | `apps/backend` | REST API, realtime events, audit trail |
 
 Shared code lives in `packages/shared` (roles, permissions, Zod schemas, grading rules,
@@ -33,27 +34,22 @@ attendance metrics, timetable-import parsing).
 
 ---
 
-## 60-second orientation
+## Demonstration school (sample data)
 
-```
-Browser / Phone
-      │  HTTPS + JSON (Bearer JWT)
-      ▼
-┌──────────────────────────────────────────┐
-│  Express app (apps/backend/src/app.ts)    │
-│  helmet · cors · compression · pino      │
-│  rate limit → validate → authenticate →   │
-│  authorize → controller → service → Prisma│
-└──────────────────────────────────────────┘
-      │                    ▲
-      │ Prisma (MySQL)      │ Socket.IO (realtime events)
-      ▼                    │
-   MySQL 8.4        ┌──────────────┐
-   44 models        │ Web / Mobile │
-                   └──────────────┘
-```
+The seed script provisions **Greenfield Matriculation Higher Secondary School** (`school code: DEMO`),
+a fictional school used purely for the principal-facing demo. **All seeded records are sample data
+and must not be treated as real school records.**
 
-**Base URL:** `http://localhost:4000/api/v1` (prefix from `API_PREFIX`).
+Demo accounts (password `demo1234` for every role):
+
+| Role | Email | What they can demo |
+|---|---|---|
+| Principal / Administrator | `principal@demo.school` | Dashboard, students, teachers, attendance, homework, exams/marks, fees, timetable, announcements, complaints/leave |
+| Teacher | `teacher@demo.school` | My classes, take attendance, create/publish homework, enter marks, timetable, leave |
+| Parent | `parent@demo.school` | Child (Kavya Ramesh, Class 8-A) attendance, homework, results, timetable, fees, leave request, complaint |
+| Student | `student@demo.school` | Own attendance, homework, timetable, published results, profile |
+
+One-click demo login buttons appear on the web and mobile login screens when `DEMO_MODE=true`.
 
 ---
 
@@ -67,7 +63,7 @@ Browser / Phone
 | `TEACHER` | Teacher | **Scoped to own sections/subjects/classes** |
 | `ACCOUNTANT` | Accountant | Fees, invoices, payments, reports |
 | `PARENT` | Parent | **Own children only** via `/parents/me/...` |
-| `STUDENT` | Student | Own attendance, homework, timetable, results, invoices |
+| `STUDENT` | Student | **Own attendance, homework, timetable, results, profile** via `/students/me/...` |
 | `LIBRARIAN` | Librarian | Books, loans |
 | `TRANSPORT_MANAGER` | Transport Manager | Vehicles, drivers, routes, stops, subscriptions |
 
@@ -96,7 +92,7 @@ Every endpoint is listed in [`API.md`](./API.md).
 ## Feature highlights
 
 - **Role-scoped everything.** Teachers see only their own sections; parents see only their own
-  children. Scoping is enforced server-side, not just in the UI.
+  children; students see only their own records. Scoping is enforced server-side, not just in the UI.
 - **Realtime.** Socket.IO rooms per user, school and role. Live notifications, messages, attendance
   marks, homework, invoices and payments.
 - **Generic CRUD engine.** 32 resource types on web, 19 on mobile — all driven by declarative
@@ -108,6 +104,8 @@ Every endpoint is listed in [`API.md`](./API.md).
 - **Audit trail.** Every mutation is recorded (actor, action, entity, IP, user agent) and is
   queryable by permitted roles.
 - **Graceful degradation.** Every screen has explicit loading / empty / error / forbidden states.
+- **Demo mode.** One-click role switching on login, clearly labelled simulated payments (never real
+  banking details), and sample data marked as such.
 
 ---
 
@@ -119,10 +117,10 @@ npm install
 npm run build:shared
 docker compose up -d mysql     # or use your own MySQL 8
 npm run db:migrate
-npm run db:seed
+npm run db:seed:demo           # seeds Greenfield Matriculation + demo accounts
 npm run dev                    # backend on :4000
 npm run dev -w @smartschool/web      # web on :5173
-npm run start -w @smartschool/mobile # Expo
+npx expo start -w @smartschool/mobile # Expo mobile
 ```
 
 Full details: [`INSTALL.md`](./INSTALL.md) and [`STARTUP.md`](./STARTUP.md).

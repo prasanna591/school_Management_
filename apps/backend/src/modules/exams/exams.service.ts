@@ -84,6 +84,7 @@ export const examsService = {
         ...(input.passingMarks !== undefined ? { passingMarks: input.passingMarks } : {}),
         ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
         ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        ...(input.isPublished !== undefined ? { isPublished: input.isPublished } : {}),
       },
     });
     return exam;

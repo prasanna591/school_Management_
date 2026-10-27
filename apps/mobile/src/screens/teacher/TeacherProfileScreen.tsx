@@ -129,7 +129,7 @@ export function TeacherProfileScreen() {
         label="Account settings"
         icon="settings"
         onPress={() =>
-          navigation.navigate(ROUTES.admin.tabs, { screen: ROUTES.admin.profile })
+          navigation.navigate(ROUTES.accountSettings)
         }
       />
     </TeacherPage>

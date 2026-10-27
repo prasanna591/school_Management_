@@ -8,6 +8,8 @@
 export const ROUTES = {
   /** Shared account page for roles without a dedicated profile tab. */
   account: 'account',
+  /** Unified account settings (profile + logout) for every role. */
+  accountSettings: 'account-settings',
   public: {
     welcome: 'welcome',
     home: 'public-home',
@@ -37,6 +39,8 @@ export const ROUTES = {
     resource: 'resource',
     /** Small informational page (About, Help, Change password notice). */
     info: 'info',
+    /** Duplicate slot label used by roles that need an extra "More" tab. */
+    more: 'academics-more',
   },
   teacher: {
     portal: 'teacher-portal',
@@ -75,14 +79,24 @@ export const ROUTES = {
     teachers: 'parent-teachers',
     notices: 'parent-notices',
   },
+  student: {
+    portal: 'student-portal',
+    timetable: 'student-timetable',
+    results: 'student-results',
+    homework: 'student-homework',
+    attendance: 'student-attendance',
+    profile: 'student-profile',
+  },
 } as const;
 
 export type Route =
   | typeof ROUTES.account
-  | (typeof ROUTES.public)[keyof (typeof ROUTES.public)]
-  | (typeof ROUTES.admin)[keyof (typeof ROUTES.admin)]
-  | (typeof ROUTES.teacher)[keyof (typeof ROUTES.teacher)]
-  | (typeof ROUTES.parent)[keyof (typeof ROUTES.parent)];
+  | typeof ROUTES.accountSettings
+  | (typeof ROUTES.public)[keyof typeof ROUTES.public]
+  | (typeof ROUTES.admin)[keyof typeof ROUTES.admin]
+  | (typeof ROUTES.teacher)[keyof typeof ROUTES.teacher]
+  | (typeof ROUTES.parent)[keyof typeof ROUTES.parent]
+  | (typeof ROUTES.student)[keyof typeof ROUTES.student];
 
 export const LOGIN_ROUTES = {
   admin: ROUTES.public.login,

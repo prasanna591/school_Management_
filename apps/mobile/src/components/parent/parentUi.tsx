@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Icon, type IconName } from '../Icon';
-import {
-  colors,
-  parentColors,
-  parentGradient,
-  parentShadowStrong,
-  radius,
-} from '../../theme';
+import { colors, parentColors, parentGradient, parentShadowStrong, radius } from '../../theme';
 
 /**
  * The shared building blocks for the Parent portal screens.
@@ -26,7 +21,22 @@ import {
 
 /** Vertical rhythm wrapper for a parent screen. */
 export function ParentPage({ children }: { children: ReactNode }) {
-  return <View style={styles.page}>{children}</View>;
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        styles.page,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 /** Page title block — the parent palette's answer to the app-wide `PageHeader`. */
@@ -229,13 +239,7 @@ const CHIP_TONES: Record<ParentChipTone, { bg: string; fg: string }> = {
 };
 
 /** Small pill used for subjects, grades, statuses and counts. */
-export function ParentChip({
-  label,
-  tone = 'default',
-}: {
-  label: string;
-  tone?: ParentChipTone;
-}) {
+export function ParentChip({ label, tone = 'default' }: { label: string; tone?: ParentChipTone }) {
   const palette = CHIP_TONES[tone];
   return (
     <View style={[styles.chip, { backgroundColor: palette.bg }]}>
@@ -415,12 +419,7 @@ export function ParentButton({
       {icon ? (
         <Icon name={icon} size={16} color={variant === 'primary' ? colors.white : colors.text} />
       ) : null}
-      <Text
-        style={[
-          styles.buttonLabel,
-          variant === 'primary' ? styles.buttonLabelOnFill : null,
-        ]}
-      >
+      <Text style={[styles.buttonLabel, variant === 'primary' ? styles.buttonLabelOnFill : null]}>
         {label}
       </Text>
     </Pressable>
@@ -453,13 +452,7 @@ export function ParentEmpty({
 }
 
 /** Error state with a retry affordance, in the parent palette. */
-export function ParentError({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry?: () => void;
-}) {
+export function ParentError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <View style={styles.empty}>
       <View style={[styles.emptyIcon, styles.emptyIconDanger]}>
@@ -477,6 +470,7 @@ export function ParentError({
 
 const styles = {
   page: {
+    flex: 1,
     gap: 16,
   },
 

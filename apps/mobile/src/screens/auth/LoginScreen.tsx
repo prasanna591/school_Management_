@@ -1,14 +1,24 @@
-import { useState, type ReactNode } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { useState, useEffect } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassCard, GlassInput, GlassButton } from '../../components/glass';
 import { Icon } from '../../components/Icon';
 import { type LoginPortal } from '../../lib/api';
 import { ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { colors, radius, shadow } from '../../theme';
+import { colors, radius, shadowStrong, gradients } from '../../theme';
 
 const PORTALS: { value: LoginPortal; label: string }[] = [
   { value: 'admin', label: 'Admin' },
@@ -24,22 +34,78 @@ const PORTAL_HEADLINES: Record<LoginPortal, string> = {
 
 export function LoginScreen({ portal = 'admin' }: { portal?: LoginPortal }) {
   const [selected, setSelected] = useState<LoginPortal>(portal);
-  // The stack header above this screen already covers the top inset; only the
-  // bottom one (Android navigation bar) has to be added here.
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion() ?? false;
+
+  /* Slow-moving blurred background blobs behind the glass card. */
+  const blobOne = useSharedValue(0);
+  const blobTwo = useSharedValue(0);
+  useEffect(() => {
+    if (reduceMotion) {
+      blobOne.value = 0;
+      blobTwo.value = 0;
+      return;
+    }
+    blobOne.value = withRepeat(
+      withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+    blobTwo.value = withRepeat(
+      withTiming(1, { duration: 11000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+    return () => {
+      cancelAnimation(blobOne);
+      cancelAnimation(blobTwo);
+    };
+  }, [reduceMotion, blobOne, blobTwo]);
+
+  const blobOneStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: 24 * blobOne.value - 12 },
+      { translateY: -18 * blobOne.value + 8 },
+      { scale: 1 + 0.1 * blobOne.value },
+    ],
+  }));
+  const blobTwoStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: -20 * blobTwo.value + 10 },
+      { translateY: 22 * blobTwo.value - 10 },
+      { scale: 1.05 - 0.08 * blobTwo.value },
+    ],
+  }));
 
   return (
-    <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.screen}>
-      <View style={[styles.container, { paddingBottom: 24 + insets.bottom }]}>
+    <LinearGradient
+      colors={gradients.canvas}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.screen}
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: 16 + insets.top,
+            paddingBottom: 32 + insets.bottom,
+            paddingLeft: 24 + insets.left,
+            paddingRight: 24 + insets.right,
+          },
+        ]}
+      >
+        <Animated.View style={[styles.blob, styles.blobOne, blobOneStyle]} pointerEvents="none" />
+        <Animated.View style={[styles.blob, styles.blobTwo, blobTwoStyle]} pointerEvents="none" />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
             <Icon name="shield" size={22} color={colors.white} />
           </View>
-          <Text style={styles.brand}>SmartSchool</Text>
+          <Text style={styles.brand}>PSM School Management</Text>
         </View>
         <Text style={styles.headline}>{PORTAL_HEADLINES[selected]}</Text>
 
-        <View style={[styles.card, shadow]}>
+        <GlassCard strong style={[styles.card, shadowStrong]}>
           <View style={styles.tabs}>
             {PORTALS.map((tab) => (
               <Pressable
@@ -58,7 +124,7 @@ export function LoginScreen({ portal = 'admin' }: { portal?: LoginPortal }) {
           </View>
 
           <LoginForm key={selected} portal={selected} />
-        </View>
+        </GlassCard>
       </View>
     </LinearGradient>
   );
@@ -78,9 +144,7 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
     try {
       await login(email.trim(), password, portal);
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.',
-      );
+      setError(err instanceof ApiError ? err.message : 'Unable to sign in. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -88,18 +152,18 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
 
   return (
     <View style={styles.form} testID={`login-form-${portal}`}>
-      <TextField
+      <GlassInput
         label="Email"
         value={email}
-        onChange={setEmail}
+        onChangeText={setEmail}
         placeholder="you@school.edu"
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      <TextField
+      <GlassInput
         label="Password"
         value={password}
-        onChange={setPassword}
+        onChangeText={setPassword}
         placeholder="••••••••"
         secureTextEntry={!showPassword}
         rightSlot={
@@ -109,30 +173,50 @@ function LoginForm({ portal }: { portal: LoginPortal }) {
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             style={styles.reveal}
           >
-            <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} />
+            <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.textMuted} />
           </Pressable>
         }
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable
-        style={styles.submit}
+      <GlassButton
+        label={submitting ? 'Signing in…' : 'Sign in'}
         onPress={onSubmit}
+        variant="fill"
         disabled={submitting}
-        accessibilityRole="button"
-        testID="login-submit"
-      >
-        <Text style={styles.submitText}>{submitting ? 'Signing in…' : 'Sign in'}</Text>
-      </Pressable>
+        style={styles.submit}
+      />
 
       {process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? (
-        <View style={{ marginTop: 12, gap: 8 }}>
-          <Text style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center' }}>Demo Quick Login (demo1234)</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('principal@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('principal@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Principal</Text></Pressable>
-            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('teacher@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('teacher@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Teacher</Text></Pressable>
-            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('accountant@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('accountant@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Accountant</Text></Pressable>
-            <Pressable style={[styles.submit, { flex: 1, minWidth: '45%' }]} onPress={async () => { setEmail('parent@demo.school'); setPassword('demo1234'); setError(null); setSubmitting(true); try { await login('parent@demo.school', 'demo1234', portal); } catch (e) { setError(e instanceof ApiError ? e.message : 'Login failed'); } finally { setSubmitting(false); } }}><Text style={styles.submitText}>Parent</Text></Pressable>
+        <View style={{ marginTop: 14, gap: 10 }}>
+          <Text style={styles.demoLabel}>Demo quick login</Text>
+          <View style={styles.demoGrid}>
+            {[
+              { label: 'Principal', email: 'principal@demo.school' },
+              { label: 'Teacher', email: 'teacher@demo.school' },
+              { label: 'Accountant', email: 'accountant@demo.school' },
+              { label: 'Parent', email: 'parent@demo.school' },
+            ].map((demo) => (
+              <GlassButton
+                key={demo.label}
+                label={demo.label}
+                variant="ghost"
+                onPress={async () => {
+                  setEmail(demo.email);
+                  setPassword('demo1234');
+                  setError(null);
+                  setSubmitting(true);
+                  try {
+                    await login(demo.email, 'demo1234', portal);
+                  } catch (e) {
+                    setError(e instanceof ApiError ? e.message : 'Login failed');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                style={styles.demoButton}
+              />
+            ))}
           </View>
         </View>
       ) : null}
@@ -150,47 +234,8 @@ function SiteLink() {
       accessibilityLabel="Browse the public site"
       style={styles.siteLinkRow}
     >
-      <Text style={styles.siteLinkText}>Explore SmartSchool</Text>
+      <Text style={styles.siteLinkText}>Explore PSM School Management</Text>
     </Pressable>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  keyboardType,
-  secureTextEntry,
-  autoCapitalize,
-  rightSlot,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  keyboardType?: 'email-address';
-  secureTextEntry?: boolean;
-  autoCapitalize?: 'none' | 'sentences';
-  rightSlot?: ReactNode;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={value}
-          onChangeText={onChange}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textFaint}
-          keyboardType={keyboardType}
-          secureTextEntry={secureTextEntry}
-          autoCapitalize={autoCapitalize}
-        />
-        {rightSlot}
-      </View>
-    </View>
   );
 }
 
@@ -201,9 +246,26 @@ const styles = {
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
-    // The bottom padding is extended with the safe-area inset in the component.
     gap: 14,
+  },
+  blob: {
+    position: 'absolute' as const,
+    borderRadius: 999,
+    pointerEvents: 'none' as const,
+  },
+  blobOne: {
+    width: 300,
+    height: 300,
+    top: -90,
+    right: -90,
+    backgroundColor: 'rgba(139, 92, 246, 0.18)',
+  },
+  blobTwo: {
+    width: 260,
+    height: 260,
+    bottom: -70,
+    left: -70,
+    backgroundColor: 'rgba(34, 211, 238, 0.14)',
   },
   brandRow: {
     flexDirection: 'row',
@@ -212,44 +274,47 @@ const styles = {
     gap: 10,
   },
   brandMark: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   brand: {
     fontSize: 26,
     fontWeight: '800',
     color: colors.white,
+    letterSpacing: -0.5,
   },
   headline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14.5,
+    color: 'rgba(255,255,255,0.85)',
     alignSelf: 'center',
     textAlign: 'center',
+    marginTop: 2,
   },
   card: {
-    marginTop: 6,
+    marginTop: 8,
     borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    padding: 18,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 22,
+    gap: 16,
+    borderColor: colors.glassBorderStrong,
   },
   tabs: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 2,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.glassSurface,
     alignItems: 'center',
   },
   tabActive: {
@@ -257,68 +322,55 @@ const styles = {
     borderColor: colors.primary,
   },
   tabText: {
-    color: colors.text,
-    fontWeight: '600',
+    color: colors.textMuted,
+    fontWeight: '600' as const,
+    fontSize: 13,
   },
   tabTextActive: {
     color: colors.white,
-    fontWeight: '700',
+    fontWeight: '800' as const,
+    fontSize: 13,
   },
   form: {
     gap: 12,
-  },
-  field: {
-    gap: 6,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: colors.surfaceMuted,
-    color: colors.text,
-    borderRadius: radius.sm,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceMuted,
-    paddingRight: 6,
   },
   reveal: {
     padding: 6,
   },
   error: {
     color: colors.danger,
-    fontSize: 14,
+    fontSize: 13,
   },
   submit: {
     marginTop: 4,
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingVertical: 14,
-    alignItems: 'center',
     minHeight: 52,
   },
-  submitText: {
-    color: colors.white,
-    fontWeight: '800',
-    fontSize: 16,
-  },
   siteLinkRow: {
-    marginTop: 8,
+    marginTop: 10,
     alignSelf: 'center',
   },
   siteLinkText: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     textDecorationLine: 'underline',
+    fontSize: 13.5,
+  },
+  demoLabel: {
+    fontSize: 11.5,
+    fontWeight: '700' as const,
+    color: colors.textMuted,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+  demoGrid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+  },
+  demoButton: {
+    flex: 1,
+    minWidth: '45%',
+    minHeight: 44,
   },
 } as const;

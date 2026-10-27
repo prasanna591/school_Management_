@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ROLE_LABELS, type Role } from '@smartschool/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../components/Icon';
 import { useAuth } from '../../lib/auth';
@@ -21,6 +22,7 @@ export function ProfileScreen() {
   const { user, logout } = useAuth();
   const { settings } = useSettings();
   const navigation = useNavigation<{ navigate: (route: string, params?: object) => void }>();
+  const insets = useSafeAreaInsets();
 
   if (!user) return null;
 
@@ -35,12 +37,10 @@ export function ProfileScreen() {
   ].filter(Boolean);
 
   return (
-    <>
+    <View style={[styles.safeContainer, { paddingTop: insets.top }]}>
       <View>
         <Text style={styles.headerTitle}>Profile</Text>
-        <Text style={styles.headerSubtitle}>
-          {ROLE_LABELS[user.role as Role] ?? user.role}
-        </Text>
+        <Text style={styles.headerSubtitle}>{ROLE_LABELS[user.role as Role] ?? user.role}</Text>
       </View>
 
       <View style={styles.card}>
@@ -117,7 +117,7 @@ export function ProfileScreen() {
         <Icon name="logout" size={18} />
         <Text style={styles.signOutText}>Logout</Text>
       </Pressable>
-    </>
+    </View>
   );
 }
 
@@ -133,11 +133,7 @@ function MenuRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      style={styles.menuRow}
-      onPress={onPress}
-      accessibilityLabel={label}
-    >
+    <Pressable style={styles.menuRow} onPress={onPress} accessibilityLabel={label}>
       <View style={styles.menuIcon}>
         <Icon name={icon} size={18} />
       </View>
@@ -258,6 +254,9 @@ const styles = {
     borderWidth: 1,
     borderColor: '#fecaca',
     backgroundColor: '#fef2f2',
+  },
+  safeContainer: {
+    paddingTop: 0,
   },
   signOutText: {
     color: '#b91c1c',

@@ -75,6 +75,11 @@ export const examResultsService = {
       }
     } else if (query.classLevelId) examFilter.classLevelId = query.classLevelId;
     if (Object.keys(examFilter).length > 0) where.exam = examFilter;
+    // Students and parents may only see results for published exams; teachers
+    // and administrators see drafts too so they can enter and manage marks.
+    if ((actor.role === 'STUDENT' || actor.role === 'PARENT') && !teacherScope) {
+      where.exam = { ...(where.exam as Prisma.ExamWhereInput), isPublished: true };
+    }
     if (query.examId) where.examId = query.examId;
     if (selfId) where.studentId = selfId;
     else if (query.studentId) where.studentId = query.studentId;

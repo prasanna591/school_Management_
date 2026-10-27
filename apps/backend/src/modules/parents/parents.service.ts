@@ -179,7 +179,7 @@ export const parentsService = {
             orderBy: { date: 'desc' },
           }),
           prisma.examResult.findMany({
-            where: { studentId: student.id },
+            where: { studentId: student.id, exam: { isPublished: true } },
             orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
             include: { exam: true, subject: true },
             take: 200,
@@ -294,7 +294,7 @@ export const parentsService = {
   async childResults(actor: Actor, studentId: string) {
     await assertChild(actor, studentId);
     return prisma.examResult.findMany({
-      where: { studentId },
+      where: { studentId, exam: { isPublished: true } },
       orderBy: { createdAt: 'desc' },
       include: { exam: true, subject: true },
     });

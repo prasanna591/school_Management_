@@ -3,6 +3,7 @@ import { getPermissionsForRole, Permission, type Role } from '@smartschool/share
 export type RouteName =
   | 'tabs'
   | 'account'
+  | 'account-settings'
   | 'admin-dashboard'
   | 'academics'
   | 'student-details'
@@ -30,6 +31,12 @@ export type RouteName =
   | 'parent-syllabus'
   | 'parent-teachers'
   | 'parent-notices'
+  | 'student-portal'
+  | 'student-timetable'
+  | 'student-results'
+  | 'student-homework'
+  | 'student-attendance'
+  | 'student-profile'
   | 'notifications'
   | 'messages'
   | 'settings'
@@ -61,6 +68,11 @@ export const TAB_ROUTE_NAMES = [
   'admin-dashboard',
   'teacher-portal',
   'parent-portal',
+  'student-portal',
+  'student-homework',
+  'student-timetable',
+  'student-results',
+  'student-profile',
   'academics',
   'teacher-classes',
   'teacher-attendance',
@@ -70,6 +82,7 @@ export const TAB_ROUTE_NAMES = [
   'parent-invoices',
   'notifications',
   'profile',
+  'account-settings',
 ] as const;
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number];
@@ -86,18 +99,10 @@ export function isTabRoute(route: RouteName): route is TabRouteName {
 export function defaultRouteForRole(role: Role): RouteName {
   if (role === 'TEACHER') return 'teacher-portal';
   if (role === 'PARENT') return 'parent-portal';
+  if (role === 'STUDENT') return 'student-portal';
   if (can(role, Permission.REPORT_READ)) return 'admin-dashboard';
   if (can(role, Permission.NOTIFICATION_READ)) return 'notifications';
   return 'profile';
-}
-
-/**
- * The drawer's initial route. Every role now has a home inside the bottom-tab
- * host, so the app always opens on `tabs` and the tab navigator picks the
- * role's landing screen.
- */
-export function drawerInitialRouteForRole(_role: Role): RouteName {
-  return 'tabs';
 }
 
 function can(role: Role, permission: Permission): boolean {

@@ -1,8 +1,8 @@
 {
-  "name": "smartschool-mobile",
-  "slug": "smartschool-mobile",
+  "name": "PSM School Management",
+  "slug": "psm-school-management",
   "version": "0.1.0",
-  "description": "SmartSchool - School Management System (React Native)",
+  "description": "PSM School Management - School Management System (React Native)",
   "orientation": "default",
   "userInterfaceStyle": "light",
   "newArchEnabled": true,

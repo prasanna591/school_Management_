@@ -10,7 +10,7 @@ import { useRealtime } from '../components/RealtimeProvider';
 import { useAuth } from '../lib/auth';
 import { can } from '../lib/permissions';
 import { defaultRouteForRole, type TabRouteName } from '../lib/routing';
-import { colors } from '../theme';
+import { colors, shadowStrong } from '../theme';
 import { academicNavForRole } from './navItems';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AcademicsScreen } from '../screens/admin/AcademicsScreen';
@@ -22,8 +22,13 @@ import { TeacherAttendanceScreen } from '../screens/teacher/TeacherAttendanceScr
 import { TeacherMessagesScreen } from '../screens/teacher/TeacherMessagesScreen';
 import { ParentHomeAwesome } from '../screens/parent/ParentHomeAwesome';
 import { ParentAttendanceScreen } from '../screens/parent/ParentAttendanceScreen';
-import { ParentInvoicesScreen } from '../screens/parent/ParentInvoicesScreen';
 import { ParentHomeworkScreen } from '../screens/parent/ParentHomeworkScreen';
+import { ParentInvoicesScreen } from '../screens/parent/ParentInvoicesScreen';
+import { StudentHomeScreen } from '../screens/student/StudentHomeScreen';
+import { StudentHomeworkScreen } from '../screens/student/StudentHomeworkScreen';
+import { StudentTimetableScreen } from '../screens/student/StudentTimetableScreen';
+import { StudentResultsScreen } from '../screens/student/StudentResultsScreen';
+import { StudentProfileScreen } from '../screens/student/StudentProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -118,6 +123,41 @@ const TABS: {
     roles: [Role.PARENT],
   },
   {
+    name: 'student-portal',
+    component: StudentHomeScreen,
+    label: 'Home',
+    icon: 'home',
+    roles: [Role.STUDENT],
+  },
+  {
+    name: 'student-homework',
+    component: StudentHomeworkScreen,
+    label: 'Homework',
+    icon: 'homework',
+    roles: [Role.STUDENT],
+  },
+  {
+    name: 'student-timetable',
+    component: StudentTimetableScreen,
+    label: 'Timetable',
+    icon: 'timetable',
+    roles: [Role.STUDENT],
+  },
+  {
+    name: 'student-results',
+    component: StudentResultsScreen,
+    label: 'Results',
+    icon: 'marks',
+    roles: [Role.STUDENT],
+  },
+  {
+    name: 'student-profile',
+    component: StudentProfileScreen,
+    label: 'Profile',
+    icon: 'user',
+    roles: [Role.STUDENT],
+  },
+  {
     name: 'notifications',
     component: NotificationsScreen,
     label: 'Alerts',
@@ -186,12 +226,13 @@ export function MainTabs() {
         // the bottom inset has to be added by hand — otherwise the tab labels
         // end up underneath Android's navigation bar.
         tabBarStyle: {
-          height: 62 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: 6 + insets.bottom,
+          height: 74 + insets.bottom,
+          paddingTop: 10,
+          paddingBottom: 10 + insets.bottom,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: colors.surface,
+          borderTopColor: colors.borderStrong,
+          backgroundColor: colors.glassSurfaceStrong,
+          ...shadowStrong,
         },
         tabBarLabelStyle: {
           fontSize: 11,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useRealtime } from '../../components/RealtimeProvider';
 import { EmptyState, ErrorState, PageHeader, SkeletonList } from '../../components/ui';
@@ -7,6 +7,7 @@ import { FilterChips, Pager } from '../../components/DataList';
 import { api, type ListMeta } from '../../lib/api';
 import { formatDateTime, humanize } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NotificationItem {
   id: string;
@@ -80,12 +81,18 @@ export function NotificationsScreen() {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
   if (state.forbidden) {
-    return <EmptyState message="You don't have permission to read notifications." icon="lock" />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <EmptyState message="You don't have permission to read notifications." icon="lock" />
+      </View>
+    );
   }
   if (state.loading) {
     return (
-      <>
+      <View style={{ paddingTop: insets.top }}>
         <Header
           title="Notifications"
           subtitle={state.data ? `${state.data.unread} unread` : undefined}
@@ -96,11 +103,15 @@ export function NotificationsScreen() {
           }}
         />
         <SkeletonList rows={6} />
-      </>
+      </View>
     );
   }
   if (state.error) {
-    return <ErrorState message={state.error} onRetry={state.reload} />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <ErrorState message={state.error} onRetry={state.reload} />
+      </View>
+    );
   }
   if (!state.data) return null;
 
@@ -114,72 +125,80 @@ export function NotificationsScreen() {
         : 'No notifications yet.';
 
   return (
-    <>
-      <Header
-        title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread` : 'You are all caught up'}
-        filter={filter}
-        onFilter={(next) => {
-          setFilter(next);
-          setPage(1);
-        }}
-        action={
-          unread > 0 ? (
-            <Pressable
-              style={styles.smallButton}
-              onPress={() => void run('all', () => api.patch('/notifications/read-all'))}
-            >
-              <Text style={styles.smallButtonText}>Mark all read</Text>
-            </Pressable>
-          ) : null
-        }
-      />
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Header
+          title="Notifications"
+          subtitle={unread > 0 ? `${unread} unread` : 'You are all caught up'}
+          filter={filter}
+          onFilter={(next) => {
+            setFilter(next);
+            setPage(1);
+          }}
+          action={
+            unread > 0 ? (
+              <Pressable
+                style={styles.smallButton}
+                onPress={() => void run('all', () => api.patch('/notifications/read-all'))}
+              >
+                <Text style={styles.smallButtonText}>Mark all read</Text>
+              </Pressable>
+            ) : null
+          }
+        />
 
-      {items.length === 0 ? (
-        <EmptyState message={emptyMessage} icon="bell" />
-      ) : (
-        <View style={styles.list}>
-          {items.map((item) => (
-            <View key={item.id} style={[styles.card, item.isRead ? null : styles.cardUnread]}>
-              <View style={styles.cardHeader}>
-                <Text style={item.isRead ? styles.cardTitle : styles.cardTitleUnread}>
-                  {item.title}
-                </Text>
-                <Text style={styles.type}>{humanize(item.type)}</Text>
-              </View>
-              {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
-              <Text style={styles.muted}>{formatDateTime(item.createdAt)}</Text>
-              <View style={styles.actions}>
-                {!item.isRead ? (
+        {items.length === 0 ? (
+          <EmptyState message={emptyMessage} icon="bell" />
+        ) : (
+          <View style={styles.list}>
+            {items.map((item) => (
+              <View key={item.id} style={[styles.card, item.isRead ? null : styles.cardUnread]}>
+                <View style={styles.cardHeader}>
+                  <Text style={item.isRead ? styles.cardTitle : styles.cardTitleUnread}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.type}>{humanize(item.type)}</Text>
+                </View>
+                {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
+                <Text style={styles.muted}>{formatDateTime(item.createdAt)}</Text>
+                <View style={styles.actions}>
+                  {!item.isRead ? (
+                    <Pressable
+                      style={styles.linkButton}
+                      disabled={busyId === item.id}
+                      onPress={() =>
+                        void run(item.id, () => api.patch(`/notifications/${item.id}/read`))
+                      }
+                    >
+                      <Text style={styles.linkButtonText}>Mark read</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     style={styles.linkButton}
                     disabled={busyId === item.id}
-                    onPress={() => void run(item.id, () => api.patch(`/notifications/${item.id}/read`))}
+                    onPress={() => void run(item.id, () => api.delete(`/notifications/${item.id}`))}
                   >
-                    <Text style={styles.linkButtonText}>Mark read</Text>
+                    <Text style={styles.linkButtonTextDanger}>Delete</Text>
                   </Pressable>
-                ) : null}
-                <Pressable
-                  style={styles.linkButton}
-                  disabled={busyId === item.id}
-                  onPress={() => void run(item.id, () => api.delete(`/notifications/${item.id}`))}
-                >
-                  <Text style={styles.linkButtonTextDanger}>Delete</Text>
-                </Pressable>
+                </View>
               </View>
-            </View>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {!state.data.clientFiltered ? (
-        <Pager
-          meta={meta ?? { total: 0, page: 1, limit: PAGE_LIMIT, totalPages: 1 }}
-          onPrev={() => setPage((value) => Math.max(1, value - 1))}
-          onNext={() => setPage((value) => value + 1)}
-        />
-      ) : null}
-    </>
+        {!state.data.clientFiltered ? (
+          <Pager
+            meta={meta ?? { total: 0, page: 1, limit: PAGE_LIMIT, totalPages: 1 }}
+            onPrev={() => setPage((value) => Math.max(1, value - 1))}
+            onNext={() => setPage((value) => value + 1)}
+          />
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 

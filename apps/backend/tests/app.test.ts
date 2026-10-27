@@ -9,7 +9,7 @@ describe('HTTP application', () => {
     const res = await request(app).get('/');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.name).toBe('SmartSchool API');
+    expect(res.body.data.name).toBe('PSM School Management API');
   });
 
   it('returns a structured 404 for unknown routes', async () => {

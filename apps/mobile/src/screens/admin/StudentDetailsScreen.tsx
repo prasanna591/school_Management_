@@ -6,6 +6,7 @@ import { FilterChips, Pager, RecordCard, SearchField } from '../../components/Da
 import { api, type ListMeta } from '../../lib/api';
 import { humanize } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface StudentRow {
   id: string;
@@ -62,10 +63,7 @@ export function StudentDetailsScreen() {
     setPage(1);
   }, [applied, status, sectionId]);
 
-  const sectionsState = useAsync(
-    () => api.list<SectionRow>('/sections', { limit: 100 }),
-    [],
-  );
+  const sectionsState = useAsync(() => api.list<SectionRow>('/sections', { limit: 100 }), []);
 
   const state = useAsync<StudentPage>(
     () =>
@@ -89,78 +87,98 @@ export function StudentDetailsScreen() {
     return map;
   }, [sections]);
 
+  const insets = useSafeAreaInsets();
+
   if (state.forbidden) {
-    return <EmptyState message="You don't have permission to view students." icon="lock" />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <EmptyState message="You don't have permission to view students." icon="lock" />
+      </View>
+    );
   }
   if (state.error) {
-    return <ErrorState message={state.error} onRetry={state.reload} />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <ErrorState message={state.error} onRetry={state.reload} />
+      </View>
+    );
   }
 
   return (
-    <>
-      <PageHeader
-        title="Student Details"
-        subtitle={state.data ? `${state.data.meta.total} students` : undefined}
-        icon="students"
-      />
-
-      <SearchField
-        value={search}
-        onChange={setSearch}
-        placeholder="Search by name or admission no…"
-      />
-
-      <FilterChips options={STATUS_OPTIONS} value={status} onChange={setStatus} />
-
-      {sections.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sectionChips}
-        >
-          <SectionChip label="All sections" active={sectionId === ''} onPress={() => setSectionId('')} />
-          {sections.map((section) => (
-            <SectionChip
-              key={section.id}
-              label={sectionLabel.get(section.id) ?? section.name}
-              active={sectionId === section.id}
-              onPress={() => setSectionId(section.id)}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
-
-      {state.loading ? (
-        <SkeletonList rows={6} />
-      ) : !state.data || state.data.items.length === 0 ? (
-        <EmptyState
-          message={applied ? `No students match “${applied}”.` : 'No students found.'}
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageHeader
+          title="Student Details"
+          subtitle={state.data ? `${state.data.meta.total} students` : undefined}
           icon="students"
         />
-      ) : (
-        <>
-          <View style={styles.list}>
-            {state.data.items.map((student) => (
-              <RecordCard
-                key={student.id}
-                title={studentName(student)}
-                rows={[
-                  { label: 'Admission No', value: student.admissionNo ?? '' },
-                  { label: 'Class', value: classLabel(student) },
-                  { label: 'Roll No', value: student.rollNo ?? '' },
-                  { label: 'Status', value: humanize(student.status) },
-                ]}
+
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name or admission no…"
+        />
+
+        <FilterChips options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+
+        {sections.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sectionChips}
+          >
+            <SectionChip
+              label="All sections"
+              active={sectionId === ''}
+              onPress={() => setSectionId('')}
+            />
+            {sections.map((section) => (
+              <SectionChip
+                key={section.id}
+                label={sectionLabel.get(section.id) ?? section.name}
+                active={sectionId === section.id}
+                onPress={() => setSectionId(section.id)}
               />
             ))}
-          </View>
-          <Pager
-            meta={state.data.meta}
-            onPrev={() => setPage((value) => Math.max(1, value - 1))}
-            onNext={() => setPage((value) => value + 1)}
+          </ScrollView>
+        ) : null}
+
+        {state.loading ? (
+          <SkeletonList rows={6} />
+        ) : !state.data || state.data.items.length === 0 ? (
+          <EmptyState
+            message={applied ? `No students match “${applied}”.` : 'No students found.'}
+            icon="students"
           />
-        </>
-      )}
-    </>
+        ) : (
+          <>
+            <View style={styles.list}>
+              {state.data.items.map((student) => (
+                <RecordCard
+                  key={student.id}
+                  title={studentName(student)}
+                  rows={[
+                    { label: 'Admission No', value: student.admissionNo ?? '' },
+                    { label: 'Class', value: classLabel(student) },
+                    { label: 'Roll No', value: student.rollNo ?? '' },
+                    { label: 'Status', value: humanize(student.status) },
+                  ]}
+                />
+              ))}
+            </View>
+            <Pager
+              meta={state.data.meta}
+              onPrev={() => setPage((value) => Math.max(1, value - 1))}
+              onNext={() => setPage((value) => value + 1)}
+            />
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 

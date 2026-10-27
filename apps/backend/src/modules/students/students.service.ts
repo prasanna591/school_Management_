@@ -187,4 +187,98 @@ export const studentsService = {
     await prisma.studentProfile.update({ where: { id }, data: { status: 'INACTIVE' } });
     return { success: true };
   },
+
+  // ------------------------------------------------------------------
+  // Self-service endpoints for the signed-in student. Every query is scoped to
+  // the student's own profile (resolved from the authenticated user), so a
+  // student can never reach another student's records.
+  // ------------------------------------------------------------------
+  async me(actor: Actor) {
+    const student = await prisma.studentProfile.findUnique({
+      where: { userId: actor.id },
+      include: {
+        user: true,
+        section: { include: { classLevel: true } },
+        guardians: { include: { guardian: true } },
+      },
+    });
+    if (!student) throw ApiError.notFound('Student profile not found');
+    const scope = resolveSchoolScope(actor);
+    if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    return student;
+  },
+  async meAttendance(actor: Actor) {
+    const student = await prisma.studentProfile.findUnique({ where: { userId: actor.id } });
+    if (!student) throw ApiError.notFound('Student profile not found');
+    const scope = resolveSchoolScope(actor);
+    if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    return prisma.attendance.findMany({
+      where: { studentId: student.id },
+      orderBy: { date: 'desc' },
+      take: 120,
+      include: { section: { include: { classLevel: true } } },
+    });
+  },
+  async meHomework(actor: Actor) {
+    const student = await prisma.studentProfile.findUnique({
+      where: { userId: actor.id },
+      select: { id: true, sectionId: true, schoolId: true },
+    });
+    if (!student) throw ApiError.notFound('Student profile not found');
+    const scope = resolveSchoolScope(actor);
+    if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    if (!student.sectionId) return [];
+    const homework = await prisma.homework.findMany({
+      where: { sectionId: student.sectionId },
+      orderBy: [{ dueDate: 'desc' }, { createdAt: 'desc' }],
+      take: 40,
+      include: {
+        subject: { select: { id: true, name: true, code: true } },
+        teacher: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
+        submissions: { where: { studentId: student.id }, select: { status: true, submittedAt: true, remarks: true } },
+      },
+    });
+    return homework.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      materials: item.materials,
+      assignedDate: item.assignedDate,
+      dueDate: item.dueDate,
+      subject: item.subject,
+      teacher: item.teacher
+        ? { id: item.teacher.id, name: `${item.teacher.user.firstName} ${item.teacher.user.lastName}` }
+        : null,
+      submission: item.submissions[0] ?? null,
+    }));
+  },
+  async meTimetable(actor: Actor) {
+    const student = await prisma.studentProfile.findUnique({
+      where: { userId: actor.id },
+      select: { id: true, sectionId: true, schoolId: true },
+    });
+    if (!student) throw ApiError.notFound('Student profile not found');
+    const scope = resolveSchoolScope(actor);
+    if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    if (!student.sectionId) return [];
+    return prisma.timetableEntry.findMany({
+      where: { sectionId: student.sectionId },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+      include: {
+        subject: { select: { id: true, name: true, code: true } },
+        teacher: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+  },
+  async meResults(actor: Actor) {
+    const student = await prisma.studentProfile.findUnique({ where: { userId: actor.id } });
+    if (!student) throw ApiError.notFound('Student profile not found');
+    const scope = resolveSchoolScope(actor);
+    if (scope && student.schoolId !== scope) throw ApiError.forbidden('Access denied');
+    return prisma.examResult.findMany({
+      where: { studentId: student.id, exam: { isPublished: true } },
+      orderBy: { createdAt: 'desc' },
+      include: { exam: true, subject: true },
+    });
+  },
 };

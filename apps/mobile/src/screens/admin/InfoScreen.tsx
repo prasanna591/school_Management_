@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PageHeader } from '../../components/ui';
 
@@ -19,9 +20,10 @@ type InfoRoute = RouteProp<{ info: InfoParams }, 'info'>;
 export function InfoScreen() {
   const route = useRoute<InfoRoute>();
   const { title, body, meta } = route.params ?? { title: 'Info', body: '' };
+  const insets = useSafeAreaInsets();
 
   return (
-    <>
+    <View style={{ flex: 1, paddingTop: insets.top }}>
       <PageHeader title={title} icon="info" />
       <View style={styles.card}>
         <Text style={styles.body}>{body}</Text>
@@ -35,7 +37,7 @@ export function InfoScreen() {
           </View>
         ) : null}
       </View>
-    </>
+    </View>
   );
 }
 

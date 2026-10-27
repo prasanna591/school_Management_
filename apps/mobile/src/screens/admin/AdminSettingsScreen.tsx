@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { EmptyState, Spinner, StatCard, formatStatValue } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -7,6 +7,7 @@ import { can } from '../../lib/permissions';
 import { useAuth } from '../../lib/auth';
 import { useSettings, type SchoolSettings } from '../../lib/settings';
 import { Permission } from '@smartschool/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TIMEZONES = ['Asia/Kolkata', 'UTC', 'UTC+03:00', 'UTC-05:00', 'UTC+05:30', 'UTC+08:00'];
 const CURRENCIES = ['INR', 'USD', 'EUR', 'KES', 'NGN', 'TZS', 'UGX', 'GHS', 'ZAR'];
@@ -28,6 +29,7 @@ export function SettingsScreen() {
   const { user } = useAuth();
   const { settings, loading, error, reload, applySettings } = useSettings();
   const editable = Boolean(user && can(user.role, Permission.SCHOOL_UPDATE));
+  const insets = useSafeAreaInsets();
 
   if (!settings) {
     if (loading) return <Spinner label="Loading school settings…" />;
@@ -35,7 +37,23 @@ export function SettingsScreen() {
     return <EmptyState message="No school is linked to your account." icon="class" />;
   }
 
-  return <SettingsForm key={settings.id} settings={settings} editable={editable} reload={reload} apply={applySettings} />;
+  return (
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <SettingsForm
+          key={settings.id}
+          settings={settings}
+          editable={editable}
+          reload={reload}
+          apply={applySettings}
+        />
+      </ScrollView>
+    </View>
+  );
 }
 
 function SettingsForm({
@@ -107,23 +125,54 @@ function SettingsForm({
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>School details</Text>
-        <Field label="Name" value={draft.name} onChange={(value) => set({ name: value })} editable={editable} />
-        <Field label="Email" value={draft.email} onChange={(value) => set({ email: value })} editable={editable} />
-        <Field label="Phone" value={draft.phone} onChange={(value) => set({ phone: value })} editable={editable} />
-        <Field label="Address" value={draft.address} onChange={(value) => set({ address: value })} editable={editable} multiline />
+        <Field
+          label="Name"
+          value={draft.name}
+          onChange={(value) => set({ name: value })}
+          editable={editable}
+        />
+        <Field
+          label="Email"
+          value={draft.email}
+          onChange={(value) => set({ email: value })}
+          editable={editable}
+        />
+        <Field
+          label="Phone"
+          value={draft.phone}
+          onChange={(value) => set({ phone: value })}
+          editable={editable}
+        />
+        <Field
+          label="Address"
+          value={draft.address}
+          onChange={(value) => set({ address: value })}
+          editable={editable}
+          multiline
+        />
 
         {editable ? (
           <>
             <Text style={styles.fieldLabel}>Timezone</Text>
             <View style={styles.chips}>
               {TIMEZONES.map((zone) => (
-                <Chip key={zone} label={zone} active={draft.timezone === zone} onPress={() => set({ timezone: zone })} />
+                <Chip
+                  key={zone}
+                  label={zone}
+                  active={draft.timezone === zone}
+                  onPress={() => set({ timezone: zone })}
+                />
               ))}
             </View>
             <Text style={styles.fieldLabel}>Currency</Text>
             <View style={styles.chips}>
               {CURRENCIES.map((code) => (
-                <Chip key={code} label={code} active={draft.currency === code} onPress={() => set({ currency: code })} />
+                <Chip
+                  key={code}
+                  label={code}
+                  active={draft.currency === code}
+                  onPress={() => set({ currency: code })}
+                />
               ))}
             </View>
           </>
@@ -190,15 +239,7 @@ function Field({
   );
 }
 
-function Chip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
+function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.chip, active ? styles.chipActive : null]}>
       <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{label}</Text>

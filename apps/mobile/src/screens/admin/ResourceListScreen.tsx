@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, PageHeader, SkeletonList } from '../../components/ui';
 import { Pager, RecordCard, SearchField } from '../../components/DataList';
@@ -44,6 +45,8 @@ export function ResourceListScreen({ resourceKey }: { resourceKey?: string }) {
     return { items: result.items, meta: result.meta };
   }, [config?.key, page, applied]);
 
+  const insets = useSafeAreaInsets();
+
   if (!config) {
     return <EmptyState message="This module is not available." icon="lock" />;
   }
@@ -52,56 +55,72 @@ export function ResourceListScreen({ resourceKey }: { resourceKey?: string }) {
   const subtitle = config.subtitle;
 
   if (state.forbidden) {
-    return <EmptyState message={`You don't have permission to view ${title}.`} icon="lock" />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <EmptyState message={`You don't have permission to view ${title}.`} icon="lock" />
+      </View>
+    );
   }
   if (state.error) {
-    return <ErrorState message={state.error} onRetry={state.reload} />;
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <ErrorState message={state.error} onRetry={state.reload} />
+      </View>
+    );
   }
 
   return (
-    <>
-      <PageHeader title={title} subtitle={subtitle} icon={config.icon} />
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageHeader title={title} subtitle={subtitle} icon={config.icon} />
 
-      {config.searchable ? (
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder={`Search ${title.toLowerCase()}…`}
-        />
-      ) : null}
-
-      {state.loading ? (
-        <SkeletonList rows={6} />
-      ) : !state.data || state.data.items.length === 0 ? (
-        <EmptyState
-          message={
-            applied ? `No ${title.toLowerCase()} match “${applied}”.` : `No ${title.toLowerCase()} yet.`
-          }
-          icon={config.icon ?? 'inbox'}
-        />
-      ) : (
-        <>
-          <View style={styles.list}>
-            {state.data.items.map((row, index) => {
-              const [primary, ...rest] = config.columns;
-              const titleValue = primary ? primary.get(row) : '';
-              return (
-                <RecordCard
-                  key={idOf(row, index)}
-                  title={titleValue}
-                  rows={rest.map((col) => ({ label: col.label, value: col.get(row) }))}
-                />
-              );
-            })}
-          </View>
-          <Pager
-            meta={state.data.meta}
-            onPrev={() => setPage((value) => Math.max(1, value - 1))}
-            onNext={() => setPage((value) => value + 1)}
+        {config.searchable ? (
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            placeholder={`Search ${title.toLowerCase()}…`}
           />
-        </>
-      )}
-    </>
+        ) : null}
+
+        {state.loading ? (
+          <SkeletonList rows={6} />
+        ) : !state.data || state.data.items.length === 0 ? (
+          <EmptyState
+            message={
+              applied
+                ? `No ${title.toLowerCase()} match “${applied}”.`
+                : `No ${title.toLowerCase()} yet.`
+            }
+            icon={config.icon ?? 'inbox'}
+          />
+        ) : (
+          <>
+            <View style={styles.list}>
+              {state.data.items.map((row, index) => {
+                const [primary, ...rest] = config.columns;
+                const titleValue = primary ? primary.get(row) : '';
+                return (
+                  <RecordCard
+                    key={idOf(row, index)}
+                    title={titleValue}
+                    rows={rest.map((col) => ({ label: col.label, value: col.get(row) }))}
+                  />
+                );
+              })}
+            </View>
+            <Pager
+              meta={state.data.meta}
+              onPrev={() => setPage((value) => Math.max(1, value - 1))}
+              onNext={() => setPage((value) => value + 1)}
+            />
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 

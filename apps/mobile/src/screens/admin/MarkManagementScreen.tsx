@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Permission } from '@smartschool/shared';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, PageHeader, SkeletonList } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -66,30 +67,30 @@ export function MarkManagementScreen() {
   const maxMarks = selectedExam?.maxMarks ?? MAX_MARKS;
   const ready = Boolean(examId) && Boolean(subjectId) && Boolean(classLevelId);
 
-  const rosterState = useAsync<{ students: MarksStudent[]; existing: ExistingResult[] } | null>(
-    async () => {
-      if (!ready || !classLevelId) return null;
-      const sections = await api.list<Row>('/sections', { classLevelId, limit: ROSTER_LIMIT });
-      const studentLists = await Promise.all(
-        sections.items.map((section) =>
-          api.list<Row>('/students', {
-            sectionId: String(section.id ?? ''),
-            status: 'ACTIVE',
-            limit: ROSTER_LIMIT,
-          }),
-        ),
-      );
-      const students = studentLists
-        .flatMap((list) => list.items.map(toMarksStudent))
-        .sort(compareStudents);
-      const results = await api.list<Row>('/exam-results', { examId, limit: ROSTER_LIMIT });
-      const existing = results.items
-        .map(toExistingResult)
-        .filter((result) => result.subjectId === subjectId);
-      return { students, existing };
-    },
-    [examId, subjectId, classLevelId, ready],
-  );
+  const rosterState = useAsync<{
+    students: MarksStudent[];
+    existing: ExistingResult[];
+  } | null>(async () => {
+    if (!ready || !classLevelId) return null;
+    const sections = await api.list<Row>('/sections', { classLevelId, limit: ROSTER_LIMIT });
+    const studentLists = await Promise.all(
+      sections.items.map((section) =>
+        api.list<Row>('/students', {
+          sectionId: String(section.id ?? ''),
+          status: 'ACTIVE',
+          limit: ROSTER_LIMIT,
+        }),
+      ),
+    );
+    const students = studentLists
+      .flatMap((list) => list.items.map(toMarksStudent))
+      .sort(compareStudents);
+    const results = await api.list<Row>('/exam-results', { examId, limit: ROSTER_LIMIT });
+    const existing = results.items
+      .map(toExistingResult)
+      .filter((result) => result.subjectId === subjectId);
+    return { students, existing };
+  }, [examId, subjectId, classLevelId, ready]);
 
   if (
     !user ||
@@ -101,63 +102,83 @@ export function MarkManagementScreen() {
 
   const canSave = can(user.role, Permission.RESULT_MANAGE);
 
+  const insets = useSafeAreaInsets();
+
+  if (
+    !user ||
+    !can(user.role, Permission.EXAM_READ) ||
+    !canAny(user.role, [Permission.RESULT_READ, Permission.RESULT_MANAGE])
+  ) {
+    return (
+      <View style={{ paddingTop: insets.top }}>
+        <EmptyState message="You don't have permission to view exam marks." icon="lock" />
+      </View>
+    );
+  }
+
   return (
-    <>
-      <PageHeader
-        title="Mark Management"
-        subtitle="Record subject marks for every student in an exam"
-        icon="mark"
-      />
-
-      {examsState.loading ? (
-        <SkeletonList rows={3} />
-      ) : examsState.error ? (
-        <ErrorState message={examsState.error} onRetry={examsState.reload} />
-      ) : exams.length === 0 ? (
-        <EmptyState message="No exams have been created yet." icon="mark" />
-      ) : (
-        <View style={styles.pickerBlock}>
-          <Text style={styles.pickerLabel}>Exam</Text>
-          <ChoiceChips
-            options={exams.map((exam) => ({ value: exam.id, label: examLabel(exam) }))}
-            value={examId}
-            onSelect={setExamId}
-            emptyLabel="— Select exam —"
-          />
-          <Text style={styles.pickerLabel}>Subject</Text>
-          <ChoiceChips
-            options={subjectOptions}
-            value={subjectId}
-            onSelect={setSubjectId}
-            emptyLabel="— Select subject —"
-          />
-        </View>
-      )}
-
-      {!examId || !subjectId ? (
-        <EmptyState message="Choose an exam and subject to load the roster." icon="search" />
-      ) : !classLevelId ? (
-        <View style={styles.alertError}>
-          <Text style={styles.alertErrorText}>This exam is not linked to a class level.</Text>
-        </View>
-      ) : rosterState.loading ? (
-        <SkeletonList rows={6} />
-      ) : rosterState.error ? (
-        <ErrorState message={rosterState.error} onRetry={rosterState.reload} />
-      ) : !rosterState.data || rosterState.data.students.length === 0 ? (
-        <EmptyState message="No active students found in this class level." icon="students" />
-      ) : (
-        <MarksEditor
-          key={`${examId}-${subjectId}`}
-          examId={examId}
-          subjectId={subjectId}
-          maxMarks={maxMarks}
-          students={rosterState.data.students}
-          existing={rosterState.data.existing}
-          canSave={canSave}
+    <View style={{ flex: 1, paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PageHeader
+          title="Mark Management"
+          subtitle="Record subject marks for every student in an exam"
+          icon="mark"
         />
-      )}
-    </>
+
+        {examsState.loading ? (
+          <SkeletonList rows={3} />
+        ) : examsState.error ? (
+          <ErrorState message={examsState.error} onRetry={examsState.reload} />
+        ) : exams.length === 0 ? (
+          <EmptyState message="No exams have been created yet." icon="mark" />
+        ) : (
+          <View style={styles.pickerBlock}>
+            <Text style={styles.pickerLabel}>Exam</Text>
+            <ChoiceChips
+              options={exams.map((exam) => ({ value: exam.id, label: examLabel(exam) }))}
+              value={examId}
+              onSelect={setExamId}
+              emptyLabel="— Select exam —"
+            />
+            <Text style={styles.pickerLabel}>Subject</Text>
+            <ChoiceChips
+              options={subjectOptions}
+              value={subjectId}
+              onSelect={setSubjectId}
+              emptyLabel="— Select subject —"
+            />
+          </View>
+        )}
+
+        {!examId || !subjectId ? (
+          <EmptyState message="Choose an exam and subject to load the roster." icon="search" />
+        ) : !classLevelId ? (
+          <View style={styles.alertError}>
+            <Text style={styles.alertErrorText}>This exam is not linked to a class level.</Text>
+          </View>
+        ) : rosterState.loading ? (
+          <SkeletonList rows={6} />
+        ) : rosterState.error ? (
+          <ErrorState message={rosterState.error} onRetry={rosterState.reload} />
+        ) : !rosterState.data || rosterState.data.students.length === 0 ? (
+          <EmptyState message="No active students found in this class level." icon="students" />
+        ) : (
+          <MarksEditor
+            key={`${examId}-${subjectId}`}
+            examId={examId}
+            subjectId={subjectId}
+            maxMarks={maxMarks}
+            students={rosterState.data.students}
+            existing={rosterState.data.existing}
+            canSave={canSave}
+          />
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -176,7 +197,11 @@ function ChoiceChips({
     return <Text style={styles.muted}>{emptyLabel}</Text>;
   }
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chips}
+    >
       {options.map((option) => {
         const active = option.value === value;
         return (

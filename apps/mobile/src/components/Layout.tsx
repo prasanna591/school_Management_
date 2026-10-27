@@ -1,4 +1,4 @@
-import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,19 +7,15 @@ import { NotificationBell } from './NotificationBell';
 import { Toaster } from './Toaster';
 import { useAuth } from '../lib/auth';
 import { initials } from '../lib/format';
-import { colors, radius } from '../theme';
+import { colors, radius, shadowStrong } from '../theme';
 
 /**
- * The shell every authenticated screen renders inside. The top bar stays quiet:
- * navigation on the left, notifications and account on the right. Screen titles
- * live in the content, so the chrome never repeats information the user already
- * knows (brand, school, page name).
+ * The shell every authenticated screen renders inside. Dark canvas shell with a
+ * glass header: hairline border, subtle shadow, and premium typography.
  *
- * The header carries the top safe-area inset and the scroll content the bottom
- * one, because the status bar is drawn edge-to-edge: without it the header would
- * sit under the Android status bar and the last row of content under the
- * navigation bar. Screens hosted by the bottom-tab navigator pass
- * `bottomInset={false}`, because the tab bar already occupies that inset.
+ * Safe areas are handled with `react-native-safe-area-context`:
+ *  - `insets.top` clears the status bar (the status bar is translucent).
+ *  - `insets.bottom` clears the Android navigation bar / iOS home indicator.
  */
 export function Layout({
   children,
@@ -28,38 +24,31 @@ export function Layout({
   bottomInset = true,
 }: {
   children: React.ReactNode;
-  /** Optional contextual title. Most screens keep their own in-content title. */
   heading?: string;
-  /** Optional second line shown beside the contextual title. */
   subheading?: string;
-  /**
-   * Whether to add the bottom safe-area inset to the content. Set to `false`
-   * inside the bottom-tab host, where the tab bar itself covers the inset.
-   */
   bottomInset?: boolean;
 }) {
   const navigation = useNavigation();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const bottom = bottomInset ? insets.bottom : 0;
   const canGoBack = navigation.canGoBack();
 
   const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
   const avatar = initials(user?.firstName, user?.lastName);
 
   return (
-    <View style={styles.shell}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          style={styles.navButton}
-          onPress={() =>
-            canGoBack ? navigation.goBack() : navigation.dispatch(DrawerActions.toggleDrawer())
-          }
-          accessibilityLabel={canGoBack ? 'Go back' : 'Open menu'}
-          hitSlop={8}
-        >
-          <Icon name={canGoBack ? 'chevron-left' : 'menu'} size={20} />
-        </Pressable>
+    <View style={[styles.shell, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: 14 }]}>
+        {canGoBack ? (
+          <Pressable
+            style={styles.navButton}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+            hitSlop={8}
+          >
+            <Icon name="chevron-left" size={20} />
+          </Pressable>
+        ) : null}
 
         {heading ? (
           <View style={styles.headerText}>
@@ -79,8 +68,8 @@ export function Layout({
         <NotificationBell />
         <Pressable
           style={styles.avatarButton}
-          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-          accessibilityLabel={name ? `Open menu, signed in as ${name}` : 'Open menu'}
+          onPress={() => {}}
+          accessibilityLabel={name ? `Signed in as ${name}` : 'Profile'}
           hitSlop={8}
         >
           <View style={styles.avatar}>
@@ -90,7 +79,10 @@ export function Layout({
       </View>
       <View style={styles.content}>
         <ScrollView
-          contentContainerStyle={[styles.contentInner, { paddingBottom: bottom + 32 }]}
+          contentContainerStyle={[
+            styles.contentInner,
+            { paddingBottom: bottomInset ? insets.bottom + 24 : 24 },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -111,21 +103,22 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 10,
-    paddingHorizontal: 16,
-    // The top padding is extended with the status-bar inset in the component.
-    paddingTop: 6,
-    paddingBottom: 6,
-    backgroundColor: colors.background,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    ...shadowStrong,
   },
   navButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glassSurface,
   },
   headerSpacer: {
     flex: 1,
@@ -135,12 +128,13 @@ const styles = {
     minWidth: 0,
   },
   headerTitle: {
-    fontSize: 15,
-    fontWeight: '700' as const,
+    fontSize: 17,
+    fontWeight: '800' as const,
+    letterSpacing: -0.4,
     color: colors.text,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: colors.textMuted,
     marginTop: 1,
   },
@@ -148,28 +142,27 @@ const styles = {
     paddingHorizontal: 2,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.glassSurfaceStrong,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   avatarText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800' as const,
-    color: colors.primaryDark,
+    color: colors.primary,
   },
   content: {
     flex: 1,
   },
   contentInner: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    // Extended with the bottom safe-area inset in the component.
-    paddingBottom: 32,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 20,
+    gap: 18,
   },
 } as const;

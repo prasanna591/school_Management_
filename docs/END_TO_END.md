@@ -1,8 +1,21 @@
-# SmartSchool - End-to-End Application Document
+# PSM School Management - End-to-End Application Document
 
 **Version:** 1.0.0  
 **Date:** October 2026  
 **Repository:** `/home/prasanna/Desktop/sms`
+
+---
+
+## Demonstration school (sample data)
+
+The demo provisions **Greenfield Matriculation Higher Secondary School** (fictional, Chennai,
+Tamil Nadu). All seeded records are sample data for the principal-facing demo.
+
+Demo accounts (password `demo1234`):
+- `principal@demo.school` — Principal / Administrator
+- `teacher@demo.school` — Teacher
+- `parent@demo.school` — Parent (child: Kavya Ramesh, Class 8-A)
+- `student@demo.school` — Student (Kavya Ramesh, Class 8-A)
 
 ---
 

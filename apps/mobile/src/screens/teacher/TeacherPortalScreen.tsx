@@ -12,7 +12,7 @@ import {
   TeacherPanel,
   type QuickAction,
 } from '../../components/teacher/teacherUi';
-import { EmptyState, ErrorState, SkeletonPanels, StatCard, StatGrid } from '../../components/ui';
+import { EmptyState, ErrorState, SkeletonPanels } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { formatDate } from '../../lib/format';
 import { can } from '../../lib/permissions';
@@ -29,6 +29,7 @@ import { sectionLabelOf, subjectLabel, timeRangeOf } from '../../lib/timetable';
 import { useAsync } from '../../lib/useAsync';
 import { colors } from '../../theme';
 import { ROUTES } from '../../navigation/routes';
+import { GlassStatCard } from '../../components/glass';
 
 type Nav = { navigate: (route: string, params?: object) => void };
 
@@ -65,7 +66,6 @@ function greeting(): string {
   return 'Good evening';
 }
 
-/** Only the tools a teacher reaches for during the school day. */
 function quickActionsFor(role: Role | undefined, go: (route: string) => void): QuickAction[] {
   const allowed = (permission: Permission) => (role ? can(role, permission) : false);
   const actions: (QuickAction & { permission?: Permission })[] = [
@@ -79,11 +79,6 @@ function quickActionsFor(role: Role | undefined, go: (route: string) => void): Q
   return actions.filter((action) => !action.permission || allowed(action.permission));
 }
 
-/**
- * The teacher's mobile home. It opens with the teacher's day, then the six
- * tools they use most, the classes ahead and the homework they assigned —
- * nothing that already lives in a tab or the drawer.
- */
 export function TeacherPortalScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
@@ -163,17 +158,26 @@ export function TeacherPortalScreen() {
         />
       ) : null}
 
-      <StatGrid>
-        <StatCard label="My classes" value={scope.sections.length} hint={`${entries.length} weekly periods`} icon="sections" />
-        <StatCard label="My students" value={studentsTotal} hint="In your sections" icon="students" tone="info" />
-        <StatCard
-          label="Homework"
-          value={homeworkTotal}
-          hint="Assigned by you"
-          icon="homework"
-          tone="primary"
-        />
-      </StatGrid>
+      <GlassStatCard
+        label="My classes"
+        value={scope.sections.length}
+        hint={`${entries.length} weekly periods`}
+        icon="sections"
+      />
+      <GlassStatCard
+        label="My students"
+        value={studentsTotal}
+        hint="In your sections"
+        icon="students"
+        tone="info"
+      />
+      <GlassStatCard
+        label="Homework"
+        value={homeworkTotal}
+        hint="Assigned by you"
+        icon="homework"
+        tone="primary"
+      />
 
       <TeacherPanel title="Quick actions">
         <QuickActionGrid items={actions} />

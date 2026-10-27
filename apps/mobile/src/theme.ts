@@ -1,131 +1,148 @@
 /**
- * The SmartSchool mobile design tokens.
+ * The SmartSchool mobile design tokens — Premium glass-morphism edition.
  *
- * Refined premium palette: soft neutral canvas with deep violet accent,
- * crisp surfaces, tighter shadows. Designed to feel more considered and
- * less template-like.
+ * Dark canvas with deep violet/cyan accents, frosted-glass surfaces, hairline
+ * borders, soft glow, and considered spacing. Built for a premium, considered
+ * feel across Admin, Teacher, Parent and Student portals.
  */
 
 export const colors = {
-  /** App canvas behind the cards. */
-  background: '#f7f6fa',
-  /** Card / sheet surface. */
-  surface: '#ffffff',
-  /** Slightly tinted surface for chips, inputs and inert buttons. */
-  surfaceMuted: '#f8f7fc',
+  /** Deep navy canvas behind everything. */
+  background: '#0a1029',
+  backgroundDeep: '#050b1a',
+  /** Base surface tinted just enough to separate from canvas. */
+  surface: '#111a36',
+  /** Slightly lighter surface for chips / inert surfaces. */
+  surfaceMuted: '#162347',
+  /** Frosted glass surface: semi-transparent white over the canvas. */
+  glassSurface: 'rgba(255, 255, 255, 0.09)',
+  glassSurfaceStrong: 'rgba(255, 255, 255, 0.13)',
+  glassBorder: 'rgba(255, 255, 255, 0.14)',
+  glassBorderStrong: 'rgba(255, 255, 255, 0.24)',
 
-  primary: '#5b21b6',
-  primaryDark: '#4c1d95',
+  primary: '#8b5cf6',
+  primaryDark: '#6d28d9',
   primaryLight: '#f3f0ff',
-  primarySoft: '#f7f5ff',
+  primarySoft: 'rgba(139, 92, 246, 0.12)',
+  primaryGlow: 'rgba(139, 92, 246, 0.35)',
 
-  /** Refined gradient for hero/banner surfaces. */
-  gradient: ['#6d28d9', '#312e81'] as const,
+  accent: '#22d3ee',
+  accentSoft: 'rgba(34, 211, 238, 0.12)',
+  accentGlow: 'rgba(34, 211, 238, 0.25)',
 
-  text: '#0f172a',
-  textMuted: '#475569',
-  textFaint: '#94a3b8',
+  text: '#f8fafc',
+  textMuted: '#94a3b8',
+  textFaint: '#64748b',
 
-  border: '#e7e5f3',
-  borderStrong: '#d7d3ee',
+  border: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.16)',
 
-  success: '#166534',
-  successSoft: '#f0fdf4',
-  warning: '#92400e',
-  warningSoft: '#fffbeb',
-  danger: '#991b1b',
-  dangerSoft: '#fef2f2',
-  info: '#5b21b6',
-  infoSoft: '#f7f5ff',
+  success: '#22c55e',
+  successSoft: 'rgba(34, 197, 94, 0.12)',
+  warning: '#f59e0b',
+  warningSoft: 'rgba(245, 158, 11, 0.12)',
+  danger: '#ef4444',
+  dangerSoft: 'rgba(239, 68, 68, 0.12)',
+  info: '#8b5cf6',
+  infoSoft: 'rgba(139, 92, 246, 0.12)',
 
-  /**
-   * Deep navy used by the Teacher portal.
-   */
+  /** Deep navy used by the Teacher portal hero. */
   navy: '#0a1029',
   navyDeep: '#050b1a',
   navySurface: '#101a36',
   navyBorder: '#1a2647',
-  /** Text colours that sit on the navy hero. */
   onNavy: '#f8fafc',
   onNavyMuted: '#c7d2fe',
 
   white: '#ffffff',
 } as const;
 
-/**
- * The Teacher hero gradient: purple into navy, matching the sidebar gradient
- * the web Teacher Portal uses.
- */
-export const teacherGradient = ['#5b21b6', '#1e3a8a'] as const;
+export const teacherGradient = ['#8b5cf6', '#1e3a8a'] as const;
 
-/**
- * The Parent palette: navy blue + white with soft blue accents, mirroring the
- * `:root[data-theme='parent']` tokens the web Parent portal applies. Parent
- * screens use these accents instead of the app-wide purple so the portal reads
- * as its own calm, blue space without disturbing the other roles.
- */
 export const parentColors = {
-  accent: '#1d4ed8',
-  accentStrong: '#1a44bf',
-  accentSoft: '#e5edfe',
-  accentBorder: '#c7d7fb',
+  accent: '#22d3ee',
+  accentStrong: '#0891b2',
+  accentSoft: 'rgba(34, 211, 238, 0.12)',
+  accentBorder: 'rgba(34, 211, 238, 0.3)',
   sky: '#0ea5e9',
 } as const;
 
-/** The Parent hero gradient: deep navy into royal blue, with a sky bloom. */
-export const parentGradient = ['#0b1c46', '#16357a', '#1d4ed8'] as const;
+export const parentGradient = ['#0b1c46', '#16357a', '#0891b2'] as const;
 
-/** A soft blue card shadow for parent surfaces (iOS shadow* + elevation). */
 export const parentShadow = {
-  shadowColor: '#16357a',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-  elevation: 3,
-} as const;
-
-/** A slightly stronger blue shadow for hero/floating parent elements. */
-export const parentShadowStrong = {
-  shadowColor: '#0b1c46',
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.18,
-  shadowRadius: 18,
-  elevation: 6,
-} as const;
-
-
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  '2xl': 32,
-  '3xl': 40,
-} as const;
-
-export const radius = {
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 28,
-  pill: 999,
-} as const;
-
-/** Soft card shadow (iOS shadow* + Android elevation). */
-export const shadow = {
-  shadowColor: '#1e1b4b',
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
+  shadowColor: '#0891b2',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.14,
+  shadowRadius: 10,
   elevation: 2,
 } as const;
 
-/** A slightly stronger shadow for floating/hero elements. */
-export const shadowStrong = {
-  shadowColor: '#1e1b4b',
-  shadowOffset: { width: 0, height: 16 },
-  shadowOpacity: 0.1,
-  shadowRadius: 24,
+export const parentShadowStrong = {
+  shadowColor: '#0b1c46',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.18,
+  shadowRadius: 14,
   elevation: 4,
+} as const;
+
+export const spacing = {
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 20,
+  xl: 26,
+  '2xl': 34,
+  '3xl': 44,
+} as const;
+
+export const radius = {
+  sm: 14,
+  md: 20,
+  lg: 28,
+  xl: 36,
+  pill: 999,
+} as const;
+
+/** Soft ambient shadow for cards floating on the dark canvas. */
+export const shadow = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.18,
+  shadowRadius: 14,
+  elevation: 3,
+} as const;
+
+/** Stronger shadow for floating / hero elements. */
+export const shadowStrong = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.22,
+  shadowRadius: 16,
+  elevation: 4,
+} as const;
+
+/** Glow behind primary accents for premium depth. */
+export const glow = {
+  primary: {
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  accent: {
+    shadowColor: '#22d3ee',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+} as const;
+
+/** Gradient definitions for hero / banner surfaces. */
+export const gradients = {
+  primary: ['#8b5cf6', '#6d28d9'] as const,
+  teacher: ['#8b5cf6', '#1e3a8a'] as const,
+  parent: ['#0b1c46', '#16357a', '#0891b2'] as const,
+  canvas: ['#0a1029', '#050b1a'] as const,
 } as const;

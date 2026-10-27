@@ -32,7 +32,7 @@ export function createApp(): Express {
   app.get('/', (_req, res) => {
     res.status(200).json({
       success: true,
-      data: { name: 'SmartSchool API', version: '0.1.0', docs: `${env.API_PREFIX}/health` },
+      data: { name: 'PSM School Management API', version: '0.1.0', docs: `${env.API_PREFIX}/health` },
     });
   });
 

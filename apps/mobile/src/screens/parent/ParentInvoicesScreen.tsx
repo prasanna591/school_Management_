@@ -1,7 +1,9 @@
 import { Text, View } from 'react-native';
 
-import { ParentChildShell } from '../../components/ParentChildShell';
+import { Layout } from '../../components/Layout';
+import { ParentEmpty, ParentPanel, ParentRow } from '../../components/parent/parentUi';
 import { formatCurrency, formatDate, humanize } from '../../lib/format';
+import { DEMO_INVOICE } from '../../lib/demoData';
 
 interface InvoiceItem {
   id: string;
@@ -30,73 +32,81 @@ interface ChildInvoice {
   payments: InvoicePayment[];
 }
 
+function buildInvoices(): ChildInvoice[] {
+  const invoice = DEMO_INVOICE;
+  return [
+    {
+      id: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      issueDate: invoice.issueDate,
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      total: invoice.total,
+      amountPaid: invoice.amountPaid,
+      balance: invoice.balance,
+      items: invoice.items.map((item) => ({
+        id: item.id,
+        description: item.description,
+        amount: item.amount,
+      })),
+      payments: invoice.payments.map((payment) => ({
+        id: payment.id,
+        amount: payment.amount,
+        method: payment.method,
+        reference: payment.reference ?? '',
+        paidAt: payment.paidAt,
+      })),
+    },
+  ];
+}
+
 export function ParentInvoicesScreen() {
+  const data: ChildInvoice[] = buildInvoices();
+
   return (
-    <ParentChildShell<ChildInvoice[]>
-      title="Recent Invoices"
-      subtitle="Your child's fee invoices and payments"
-      endpoint={(studentId) => `/parents/me/children/${studentId}/invoices`}
-      emptyMessage="No invoices have been issued."
-      isEmpty={(data) => data.length === 0}
-      render={(data) => (
+    <Layout heading="Fees">
+      {data.length === 0 ? (
+        <ParentEmpty message="No invoices have been issued." hint="Fee invoices will appear here once issued by the school." />
+      ) : (
         <View style={styles.grid}>
-          {data.map((invoice, index) => (
-            <InvoiceCard key={invoice.id ?? index} invoice={invoice} />
+          {data.map((invoice) => (
+            <InvoiceCard key={invoice.id ?? 'unknown'} invoice={invoice} />
           ))}
         </View>
       )}
-    />
+    </Layout>
   );
 }
 
 function InvoiceCard({ invoice }: { invoice: ChildInvoice }) {
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{invoice.invoiceNo}</Text>
-        <Text style={styles.status}>{humanize(invoice.status)}</Text>
+    <ParentPanel title={invoice.invoiceNo} icon="finance">
+      <View style={styles.cardBody}>
+        <ParentRow title="Status" meta={humanize(invoice.status)} />
+        <ParentRow title="Issued" meta={formatDate(invoice.issueDate)} />
+        <ParentRow title="Due" meta={formatDate(invoice.dueDate)} />
+
+        {invoice.items.map((item) => (
+          <ParentRow key={item.id} title={item.description} meta={formatCurrency(item.amount)} />
+        ))}
+        <ParentRow title="Total" meta={formatCurrency(invoice.total)} />
+        <ParentRow title="Paid" meta={formatCurrency(invoice.amountPaid)} />
+        <ParentRow title="Balance" meta={formatCurrency(invoice.balance)} />
+
+        {invoice.payments.length > 0 ? (
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.subtitle}>Payments</Text>
+            {invoice.payments.map((payment) => (
+              <ParentRow
+                key={payment.id}
+                title={`${formatDate(payment.paidAt)} · ${humanize(payment.method)}`}
+                meta={formatCurrency(payment.amount)}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
-      <Text style={styles.muted}>
-        Issued {formatDate(invoice.issueDate)} · Due {formatDate(invoice.dueDate)}
-      </Text>
-
-      {invoice.items.map((item) => (
-        <Row key={item.id} label={item.description} value={formatCurrency(item.amount)} />
-      ))}
-      <Row label="Total" value={formatCurrency(invoice.total)} strong />
-      <Row label="Paid" value={formatCurrency(invoice.amountPaid)} />
-      <Row label="Balance" value={formatCurrency(invoice.balance)} strong />
-
-      {invoice.payments.length > 0 ? (
-        <View style={styles.payments}>
-          <Text style={styles.subtitle}>Payments</Text>
-          {invoice.payments.map((payment) => (
-            <Row
-              key={payment.id}
-              label={`${formatDate(payment.paidAt)} · ${humanize(payment.method)}`}
-              value={formatCurrency(payment.amount)}
-            />
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function Row({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, strong ? styles.rowStrong : null]}>{label}</Text>
-      <Text style={[styles.rowValue, strong ? styles.rowStrong : null]}>{value}</Text>
-    </View>
+    </ParentPanel>
   );
 }
 
@@ -104,64 +114,13 @@ const styles = {
   grid: {
     gap: 12,
   },
-  card: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    gap: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  cardBody: {
     gap: 8,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
-    flexShrink: 1,
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
   },
   subtitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#334155',
     marginBottom: 2,
-  },
-  payments: {
-    marginTop: 4,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  rowLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    flexShrink: 1,
-  },
-  rowValue: {
-    fontSize: 13,
-    color: '#334155',
-  },
-  rowStrong: {
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  muted: {
-    fontSize: 13,
-    color: '#64748b',
   },
 } as const;
